@@ -163,10 +163,8 @@ const STORAGE_MINUTE_KEY = "energy-planner-current-minute-v1";
 const STORAGE_SKIPPED_KEY = "energy-planner-skipped-task-ids-v1";
 const STORAGE_EVENTS_KEY = "energy-planner-fixed-events-v2";
 
-// ─── FIX 1: Safe localStorage reader ────────────────────────────────────────
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
-
   try {
     const raw = localStorage.getItem(key);
     if (raw === null) return fallback;
@@ -178,7 +176,6 @@ function readStorage<T>(key: string, fallback: T): T {
 
 function writeStorage(key: string, value: unknown): void {
   if (typeof window === "undefined") return;
-
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
@@ -186,7 +183,6 @@ function writeStorage(key: string, value: unknown): void {
   }
 }
 
-// ─── FIX 2: Lazy initial tasks (no flicker, IDs stable) ─────────────────────
 function makeInitialTasks(): Task[] {
   return [
     {
@@ -278,7 +274,6 @@ const emptyEventForm: EventForm = {
   endMinute: 0,
 };
 
-// ─── Styling helpers ─────────────────────────────────────────────────────────
 function inputClass(): string {
   return "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-500";
 }
@@ -315,12 +310,10 @@ function creativityBadgeClass(level: CreativityLevel): string {
   return "border border-slate-200 bg-slate-100 text-slate-600";
 }
 
-// Format HH:MM from hour + minute
 function formatTime(hour: number, minute: number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-// Total minutes since midnight for easy comparison
 function toMinutes(hour: number, minute: number): number {
   return hour * 60 + minute;
 }
@@ -344,14 +337,11 @@ function scoreTask(task: Task, segment: DaySegment, energyState: EnergyState): n
   score += task.importance * 10;
   score += task.urgency * 8;
 
-  // Energy match
   const currentEnergy = ENERGY_SCORE[segment.energy] * energyState.multiplier;
   const taskEnergy = ENERGY_SCORE[task.energy];
   const energyGap = Math.abs(currentEnergy - taskEnergy);
   score += 24 - energyGap * 10;
 
-  // Creativity match — segment creativity vs task creativity need
-  // Perfect match = +20, one step off = +8, two steps off = -8
   const segCreativity = CREATIVITY_SCORE[segment.creativity];
   const taskCreativity = CREATIVITY_SCORE[task.creativity];
   const creativityGap = Math.abs(segCreativity - taskCreativity);
@@ -390,7 +380,6 @@ function buildPlan(
   };
 }
 
-// ─── Timer hook ──────────────────────────────────────────────────────────────
 function useTaskTimer() {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
@@ -420,9 +409,7 @@ function useTaskTimer() {
   return { activeTaskId, formatElapsed, startTimer, stopTimer };
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
 export default function DayPlannerDecidesForYou() {
-  // ── FIX 1 & 2: All state initialised lazily from localStorage, no useEffect flicker ──
   const [tasks, setTasks] = useState<Task[]>(() => {
     const saved = readStorage<Task[]>(STORAGE_KEY, []);
     return saved.length > 0 ? saved : makeInitialTasks();
@@ -433,18 +420,17 @@ export default function DayPlannerDecidesForYou() {
     return saved.length > 0 ? saved : makeInitialEvents();
   });
 
+  // FIX: attach ref to the actual form card div, and to the title input
   const formRef = useRef<HTMLDivElement | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
- 
+
   const [energyStateValue, setEnergyStateValue] = useState<EnergyStateValue>(() => {
-  if (typeof window === "undefined") return "normal";
+    if (typeof window === "undefined") return "normal";
+    const saved = localStorage.getItem(STORAGE_ENERGY_KEY);
+    if (saved === "tired" || saved === "normal" || saved === "energized") return saved;
+    return "normal";
+  });
 
-  const saved = localStorage.getItem(STORAGE_ENERGY_KEY);
-  if (saved === "tired" || saved === "normal" || saved === "energized") return saved;
-  return "normal";
-});
-
-  // ── FIX 3: Auto-initialise hour to real current time ──────────────────────
   const [currentHour, setCurrentHour] = useState<number>(() => {
     const saved = readStorage<number | null>(STORAGE_HOUR_KEY, null);
     return saved !== null ? saved : new Date().getHours();
@@ -463,7 +449,6 @@ export default function DayPlannerDecidesForYou() {
   const [taskForm, setTaskForm] = useState<TaskForm>(emptyTaskForm);
   const [eventForm, setEventForm] = useState<EventForm>(emptyEventForm);
 
-  // Validation: end time must be strictly after start time
   const eventFormError =
     toMinutes(eventForm.endHour, eventForm.endMinute) <= toMinutes(eventForm.startHour, eventForm.startMinute)
       ? "End time must be after start time."
@@ -471,7 +456,6 @@ export default function DayPlannerDecidesForYou() {
 
   const timer = useTaskTimer();
 
-  // ── Persist on every change (no separate useEffects needed per field) ──────
   function persistTasks(next: Task[]) {
     setTasks(next);
     writeStorage(STORAGE_KEY, next);
@@ -513,32 +497,30 @@ export default function DayPlannerDecidesForYou() {
   const doneTasks = tasks.filter((t) => t.done);
   const skippedTasks = tasks.filter((t) => !t.done && skippedTaskIds.includes(t.id));
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
   function resetTaskForm() {
     setTaskForm(emptyTaskForm);
     setEditingTaskId(null);
   }
 
-function startEditing(task: Task) {
-  alert("Edit clicked: " + task.title);
-  setEditingTaskId(task.id);
-  setTaskForm({
-    title: task.title,
-    type: task.type,
-    energy: task.energy,
-    creativity: task.creativity,
-    duration: task.duration,
-    importance: task.importance,
-    urgency: task.urgency,
-    preferredSegment: task.preferredSegment,
-  });
+  // FIX: removed debug alert, refs now scroll+focus correctly
+  function startEditing(task: Task) {
+    setEditingTaskId(task.id);
+    setTaskForm({
+      title: task.title,
+      type: task.type,
+      energy: task.energy,
+      creativity: task.creativity,
+      duration: task.duration,
+      importance: task.importance,
+      urgency: task.urgency,
+      preferredSegment: task.preferredSegment,
+    });
 
-  setTimeout(() => {
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    titleInputRef.current?.focus();
-  }, 0);
-}
-
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      titleInputRef.current?.focus();
+    }, 50);
+  }
 
   function addTask() {
     if (!taskForm.title.trim()) return;
@@ -579,8 +561,6 @@ function startEditing(task: Task) {
     }
     resetTaskForm();
   }
-
-
 
   function markDone(id: string) {
     if (timer.activeTaskId === id) timer.stopTimer();
@@ -642,7 +622,6 @@ function startEditing(task: Task) {
     persistEvents(fixedEvents.filter((e) => e.id !== id));
   }
 
-  // ── FIX 5: Start task wired to timer ─────────────────────────────────────
   function handleStartTask(taskId: string) {
     if (timer.activeTaskId === taskId) {
       timer.stopTimer();
@@ -886,15 +865,22 @@ function startEditing(task: Task) {
               </div>
             </div>
 
-            {/* Add / edit task form */}
-            <div className={cardClass()}>
+            {/* FIX: ref attached to this card div so scrollIntoView works */}
+            <div ref={formRef} className={cardClass()}>
               <h2 className="text-lg font-semibold text-slate-900">
-                {editingTaskId ? "Edit task" : "Add a task"}
+                {editingTaskId ? "✏️ Editing task" : "Add a task"}
               </h2>
+              {editingTaskId && (
+                <p className="mt-1 text-xs text-violet-600 font-medium">
+                  Editing — make your changes and click Save below.
+                </p>
+              )}
               <div className="mt-4 space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Task name</label>
+                  {/* FIX: ref attached to title input so focus() works */}
                   <input
+                    ref={titleInputRef}
                     className={inputClass()}
                     placeholder="e.g. Write essay intro"
                     value={taskForm.title}
@@ -1057,8 +1043,7 @@ function startEditing(task: Task) {
                   <div className="mt-5 flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full bg-white/10 px-3 py-1">{plan.segment.label}</span>
                     <span className="rounded-full bg-white/10 px-3 py-1">
-                      {String(plan.currentEvent.startHour).padStart(2, "0")}:00–
-                      {String(plan.currentEvent.endHour).padStart(2, "0")}:00
+                      {formatTime(plan.currentEvent.startHour, plan.currentEvent.startMinute)}–{formatTime(plan.currentEvent.endHour, plan.currentEvent.endMinute)}
                     </span>
                   </div>
                 </>
@@ -1085,7 +1070,6 @@ function startEditing(task: Task) {
                     <span className="rounded-full bg-white/10 px-3 py-1">
                       Score: {Math.round(plan.nowTask.score)}
                     </span>
-                    {/* Timer display */}
                     {timer.activeTaskId === plan.nowTask.id && (
                       <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-emerald-300">
                         <Timer className="mr-1 inline h-3 w-3" />
@@ -1100,14 +1084,12 @@ function startEditing(task: Task) {
                     >
                       <CheckCircle2 className="mr-2 h-4 w-4" /> Mark done
                     </button>
-                    {/* FIX: Skip button now wired */}
                     <button
                       onClick={() => plan.nowTask && skipTask(plan.nowTask.id)}
                       className={buttonClass("ghost")}
                     >
                       Skip
                     </button>
-                    {/* FIX: Start task now toggles a real timer */}
                     <button
                       onClick={() => plan.nowTask && handleStartTask(plan.nowTask.id)}
                       className={buttonClass("ghost")}
@@ -1128,7 +1110,14 @@ function startEditing(task: Task) {
               <div className="mt-4 space-y-3">
                 {plan.ranked.length ? (
                   plan.ranked.map((task, index) => (
-                    <div key={task.id} className="rounded-2xl border border-slate-200 p-4">
+                    <div
+                      key={task.id}
+                      className={`rounded-2xl border p-4 transition ${
+                        editingTaskId === task.id
+                          ? "border-violet-300 bg-violet-50"
+                          : "border-slate-200"
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-2">
@@ -1136,6 +1125,11 @@ function startEditing(task: Task) {
                               {index + 1}
                             </span>
                             <div className="font-medium text-slate-900">{task.title}</div>
+                            {editingTaskId === task.id && (
+                              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-700">
+                                editing
+                              </span>
+                            )}
                             {timer.activeTaskId === task.id && (
                               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
                                 <Timer className="mr-1 inline h-3 w-3" />
@@ -1303,7 +1297,7 @@ function startEditing(task: Task) {
             </div>
           </div>
         </div>
-      </div> // deploy trigger
+      </div>
     </div>
   );
 }
