@@ -1,5 +1,5 @@
 import EnergySchedulerMVP from "./EnergySchedulerMVP";
 
-export default function Home() {
+export default function Page() {
   return <EnergySchedulerMVP />;
 }
