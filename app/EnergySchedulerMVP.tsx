@@ -1285,7 +1285,7 @@ export default function DayPlannerDecidesForYou() {
             </div>
           </div>
         </div>
-      </div>
+      </div> // deploy trigger
     </div>
   );
 }
