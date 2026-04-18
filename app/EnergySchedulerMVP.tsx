@@ -141,8 +141,6 @@ const LEARNING_MIN_EVENTS = 3;
 const SK_TASKS    = "planner-tasks-v3";
 const SK_EVENTS   = "planner-fixed-events-v2";
 const SK_ENERGY   = "planner-energy-v1";
-const SK_HOUR     = "planner-hour-v1";
-const SK_MINUTE   = "planner-minute-v1";
 const SK_SKIPPED  = "planner-skipped-v1";
 const SK_LEARNING = "planner-learning-v1";
 const SK_LOG      = "planner-log-v1";
@@ -612,8 +610,25 @@ export default function DayPlannerDecidesForYou() {
     const s = localStorage.getItem(SK_ENERGY);
     return (s === "tired" || s === "normal" || s === "energized") ? s : "normal";
   });
-  const [currentHour,    setCurrentHour]    = useState<number>(() => { const s = readStorage<number|null>(SK_HOUR,   null); return s ?? new Date().getHours(); });
-  const [currentMinute,  setCurrentMinute]  = useState<number>(() => { const s = readStorage<number|null>(SK_MINUTE, null); return s ?? new Date().getMinutes(); });
+  const [currentHour,   setCurrentHour]   = useState<number>(() => new Date().getHours());
+  const [currentMinute, setCurrentMinute] = useState<number>(() => new Date().getMinutes());
+
+  // Auto-sync to device clock every minute
+  React.useEffect(() => {
+    function tick() {
+      const now = new Date();
+      setCurrentHour(now.getHours());
+      setCurrentMinute(now.getMinutes());
+    }
+    // Align the first tick to the next whole minute
+    const msUntilNextMinute = (60 - new Date().getSeconds()) * 1000;
+    const timeout = setTimeout(() => {
+      tick();
+      const interval = setInterval(tick, 60_000);
+      return () => clearInterval(interval);
+    }, msUntilNextMinute);
+    return () => clearTimeout(timeout);
+  }, []);
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>(() => readStorage<string[]>(SK_SKIPPED, []));
   const [learningMap,    setLearningMap]    = useState<LearningMap>(() => readStorage<LearningMap>(SK_LEARNING, {}));
   const [taskLog,        setTaskLog]        = useState<TaskLogEntry[]>(() => readStorage<TaskLogEntry[]>(SK_LOG, []));
@@ -675,8 +690,6 @@ export default function DayPlannerDecidesForYou() {
   function persistTasks(next: Task[])            { setTasks(next);          writeStorage(SK_TASKS,    next); }
   function persistEvents(next: FixedEvent[])     { setFixedEvents(next);    writeStorage(SK_EVENTS,   next); }
   function persistEnergy(next: EnergyStateValue) { setEnergyStateValue(next); writeStorage(SK_ENERGY, next); }
-  function persistHour(next: number)             { setCurrentHour(next);    writeStorage(SK_HOUR,     next); }
-  function persistMinute(next: number)           { setCurrentMinute(next);  writeStorage(SK_MINUTE,   next); }
   function persistSkipped(next: string[])        { setSkippedTaskIds(next); writeStorage(SK_SKIPPED,  next); }
   function persistLearning(next: LearningMap)    { setLearningMap(next);    writeStorage(SK_LEARNING, next); }
 
@@ -723,8 +736,6 @@ export default function DayPlannerDecidesForYou() {
     persistEnergy(val);
     setQuickMode(val === "tired");
   }
-
-  function syncToNow() { const n = new Date(); persistHour(n.getHours()); persistMinute(n.getMinutes()); }
 
   // ── Task modal helpers ────────────────────────────────────────────────────────
   function openAddTaskModal() {
@@ -972,28 +983,20 @@ export default function DayPlannerDecidesForYou() {
           </button>
         </div>
 
-        {/* Time picker */}
+        {/* Auto time display */}
         <div className="rounded-3xl border border-[#F5CF82] bg-[#FFFFFF] p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-[#3D2B1F]">What time is it?</h2>
-          <div className="mt-3 space-y-3">
-            <input type="range" min="6" max="22" value={currentHour} onChange={(e) => persistHour(Number(e.target.value))} className="w-full" />
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs text-[#6B8C7A]">Hour</label>
-                <input className={inputCls} type="number" min={6} max={22} value={currentHour} onChange={(e) => persistHour(Math.min(22, Math.max(6, Number(e.target.value))))} />
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-3xl font-semibold text-[#3D2B1F] tracking-tight">
+                {formatTime(currentHour, currentMinute)}
               </div>
-              <div>
-                <label className="mb-1 block text-xs text-[#6B8C7A]">Minute</label>
-                <input className={inputCls} type="number" min={0} max={59} value={currentMinute} onChange={(e) => persistMinute(Math.min(59, Math.max(0, Number(e.target.value))))} />
+              <div className="mt-1 text-sm text-[#7A6050]">
+                {plan.segment.label} · creativity {plan.segment.creativity}
               </div>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-semibold text-[#3D2B1F]">{formatTime(currentHour, currentMinute)}</span>
-              <span className="text-[#6B8C7A]">{plan.segment.label} · creativity {plan.segment.creativity}</span>
+            <div className="rounded-2xl bg-[#EEF3FE] px-3 py-2 text-xs text-[#4070CC] font-medium">
+              Auto-synced
             </div>
-            <button onClick={syncToNow} className={`${btnCls("ghost")} w-full text-xs`}>
-              Sync to now ({formatTime(new Date().getHours(), new Date().getMinutes())})
-            </button>
           </div>
         </div>
       </div>
