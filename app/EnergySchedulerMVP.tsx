@@ -520,6 +520,7 @@ export default function DayPlannerDecidesForYou() {
   }
 
 function startEditing(task: Task) {
+  alert("Edit clicked: " + task.title);
   setEditingTaskId(task.id);
   setTaskForm({
     title: task.title,
