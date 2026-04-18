@@ -165,6 +165,8 @@ const STORAGE_EVENTS_KEY = "energy-planner-fixed-events-v2";
 
 // ─── FIX 1: Safe localStorage reader ────────────────────────────────────────
 function readStorage<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+
   try {
     const raw = localStorage.getItem(key);
     if (raw === null) return fallback;
@@ -175,6 +177,8 @@ function readStorage<T>(key: string, fallback: T): T {
 }
 
 function writeStorage(key: string, value: unknown): void {
+  if (typeof window === "undefined") return;
+
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
@@ -429,11 +433,14 @@ export default function DayPlannerDecidesForYou() {
     return saved.length > 0 ? saved : makeInitialEvents();
   });
 
+ 
   const [energyStateValue, setEnergyStateValue] = useState<EnergyStateValue>(() => {
-    const saved = localStorage.getItem(STORAGE_ENERGY_KEY);
-    if (saved === "tired" || saved === "normal" || saved === "energized") return saved;
-    return "normal";
-  });
+  if (typeof window === "undefined") return "normal";
+
+  const saved = localStorage.getItem(STORAGE_ENERGY_KEY);
+  if (saved === "tired" || saved === "normal" || saved === "energized") return saved;
+  return "normal";
+});
 
   // ── FIX 3: Auto-initialise hour to real current time ──────────────────────
   const [currentHour, setCurrentHour] = useState<number>(() => {
