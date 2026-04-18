@@ -434,6 +434,7 @@ export default function DayPlannerDecidesForYou() {
   });
 
   const formRef = useRef<HTMLDivElement | null>(null);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
  
   const [energyStateValue, setEnergyStateValue] = useState<EnergyStateValue>(() => {
   if (typeof window === "undefined") return "normal";
@@ -518,6 +519,26 @@ export default function DayPlannerDecidesForYou() {
     setEditingTaskId(null);
   }
 
+function startEditing(task: Task) {
+  setEditingTaskId(task.id);
+  setTaskForm({
+    title: task.title,
+    type: task.type,
+    energy: task.energy,
+    creativity: task.creativity,
+    duration: task.duration,
+    importance: task.importance,
+    urgency: task.urgency,
+    preferredSegment: task.preferredSegment,
+  });
+
+  setTimeout(() => {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    titleInputRef.current?.focus();
+  }, 0);
+}
+
+
   function addTask() {
     if (!taskForm.title.trim()) return;
     if (editingTaskId) {
@@ -558,19 +579,7 @@ export default function DayPlannerDecidesForYou() {
     resetTaskForm();
   }
 
-  function startEditing(task: Task) {
-    setEditingTaskId(task.id);
-    setTaskForm({
-      title: task.title,
-      type: task.type,
-      energy: task.energy,
-      creativity: task.creativity,
-      duration: task.duration,
-      importance: task.importance,
-      urgency: task.urgency,
-      preferredSegment: task.preferredSegment,
-    });
-  }
+
 
   function markDone(id: string) {
     if (timer.activeTaskId === id) timer.stopTimer();
