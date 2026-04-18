@@ -590,12 +590,15 @@ function DayTimeline({ blocks, currentHour, currentMinute, onTaskClick }: DayTim
   );
 }
 
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
+type TabKey = "now" | "tasks" | "timeline";
+
 export default function DayPlannerDecidesForYou() {
-  const formRef       = useRef<HTMLDivElement | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
+  // ── Persisted state ──────────────────────────────────────────────────────────
   const [tasks, setTasks] = useState<Task[]>(() => {
     const s = readStorage<Task[]>(SK_TASKS, []);
     return s.length > 0 ? s : makeInitialTasks();
@@ -609,26 +612,30 @@ export default function DayPlannerDecidesForYou() {
     const s = localStorage.getItem(SK_ENERGY);
     return (s === "tired" || s === "normal" || s === "energized") ? s : "normal";
   });
-  const [currentHour,   setCurrentHour]   = useState<number>(() => { const s = readStorage<number|null>(SK_HOUR, null);   return s ?? new Date().getHours(); });
-  const [currentMinute, setCurrentMinute] = useState<number>(() => { const s = readStorage<number|null>(SK_MINUTE, null); return s ?? new Date().getMinutes(); });
+  const [currentHour,    setCurrentHour]    = useState<number>(() => { const s = readStorage<number|null>(SK_HOUR,   null); return s ?? new Date().getHours(); });
+  const [currentMinute,  setCurrentMinute]  = useState<number>(() => { const s = readStorage<number|null>(SK_MINUTE, null); return s ?? new Date().getMinutes(); });
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>(() => readStorage<string[]>(SK_SKIPPED, []));
-  const [learningMap,   setLearningMap]   = useState<LearningMap>(() => readStorage<LearningMap>(SK_LEARNING, {}));
-  const [taskLog,       setTaskLog]       = useState<TaskLogEntry[]>(() => readStorage<TaskLogEntry[]>(SK_LOG, []));
+  const [learningMap,    setLearningMap]    = useState<LearningMap>(() => readStorage<LearningMap>(SK_LEARNING, {}));
+  const [taskLog,        setTaskLog]        = useState<TaskLogEntry[]>(() => readStorage<TaskLogEntry[]>(SK_LOG, []));
 
-  const [quickMode,            setQuickMode]            = useState(false);
-  const [editingTaskId,        setEditingTaskId]        = useState<string | null>(null);
-  const [taskForm,             setTaskForm]             = useState<TaskForm>(emptyTaskForm);
-  const [eventForm,            setEventForm]            = useState<EventForm>(emptyEventForm);
-  const [showTimeline,         setShowTimeline]         = useState(true);
-  const [showHistory,          setShowHistory]          = useState(false);
-  const [showLearningInsights, setShowLearningInsights] = useState(false);
+  // ── UI state ─────────────────────────────────────────────────────────────────
+  const [activeTab,         setActiveTab]         = useState<TabKey>("now");
+  const [quickMode,         setQuickMode]         = useState(false);
+  const [editingTaskId,     setEditingTaskId]     = useState<string | null>(null);
+  const [taskForm,          setTaskForm]          = useState<TaskForm>(emptyTaskForm);
+  const [eventForm,         setEventForm]         = useState<EventForm>(emptyEventForm);
+  const [showTaskModal,     setShowTaskModal]     = useState(false);
+  const [showEventModal,    setShowEventModal]    = useState(false);
+  const [showLearning,      setShowLearning]      = useState(false);
+  const [showHistory,       setShowHistory]       = useState(false);
 
-  const timer = useTaskTimer();
+  const timer       = useTaskTimer();
   const energyState = ENERGY_STATES.find((s) => s.value === energyStateValue) ?? ENERGY_STATES[1];
 
   const eventFormError = toMinutes(eventForm.endHour, eventForm.endMinute) <= toMinutes(eventForm.startHour, eventForm.startMinute)
     ? "End time must be after start time." : null;
 
+  // ── Derived ───────────────────────────────────────────────────────────────────
   const plan = useMemo<Plan>(
     () => buildPlan(tasks, currentHour, currentMinute, energyState, skippedTaskIds, fixedEvents, learningMap, quickMode),
     [tasks, currentHour, currentMinute, energyState, skippedTaskIds, fixedEvents, learningMap, quickMode]
@@ -642,113 +649,15 @@ export default function DayPlannerDecidesForYou() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [plan.ranked, fixedEvents, tasks, skippedTaskIds, currentHour, currentMinute]
   );
-  const today     = todayStr();
-  const yesterday = yesterdayStr();
+
+  const today        = todayStr();
+  const yesterday    = yesterdayStr();
   const todayLog     = taskLog.filter((e) => e.date === today);
   const yesterdayLog = taskLog.filter((e) => e.date === yesterday);
   const todayDone    = todayLog.filter((e) => e.outcome === "done");
   const todaySkipped = todayLog.filter((e) => e.outcome === "skipped");
   const yestDone     = yesterdayLog.filter((e) => e.outcome === "done");
   const yestSkipped  = yesterdayLog.filter((e) => e.outcome === "skipped");
-
-  // Persist helpers
-  function persistTasks(next: Task[])        { setTasks(next);         writeStorage(SK_TASKS,    next); }
-  function persistEvents(next: FixedEvent[]) { setFixedEvents(next);   writeStorage(SK_EVENTS,   next); }
-  function persistEnergy(next: EnergyStateValue) { setEnergyStateValue(next); writeStorage(SK_ENERGY, next); }
-  function persistHour(next: number)         { setCurrentHour(next);   writeStorage(SK_HOUR,     next); }
-  function persistMinute(next: number)       { setCurrentMinute(next); writeStorage(SK_MINUTE,   next); }
-  function persistSkipped(next: string[])    { setSkippedTaskIds(next); writeStorage(SK_SKIPPED,  next); }
-  function persistLearning(next: LearningMap) { setLearningMap(next);  writeStorage(SK_LEARNING, next); }
-
-  function addLogEntry(task: Task, outcome: OutcomeType) {
-    const entry: TaskLogEntry = {
-      id: crypto.randomUUID(), taskId: task.id, taskTitle: task.title,
-      taskType: task.type, taskDuration: task.duration, outcome,
-      segment: plan.segment.key, energyState: energyStateValue,
-      timestamp: Date.now(), date: todayStr(),
-    };
-    const next = [...taskLog, entry];
-    setTaskLog(next); writeStorage(SK_LOG, next);
-  }
-
-  // Handlers
-  function markDone(id: string) {
-    const task = tasks.find((t) => t.id === id);
-    if (task) {
-      addLogEntry(task, "done");
-      persistLearning(recordOutcome(learningMap, task.type, plan.segment.key, energyStateValue, "done"));
-    }
-    if (timer.activeTaskId === id) timer.stopTimer();
-    persistTasks(tasks.map((t) => t.id === id ? { ...t, done: true } : t));
-    persistSkipped(skippedTaskIds.filter((s) => s !== id));
-  }
-
-  function skipTask(id: string) {
-    const task = tasks.find((t) => t.id === id);
-    if (task) {
-      addLogEntry(task, "skipped");
-      persistLearning(recordOutcome(learningMap, task.type, plan.segment.key, energyStateValue, "skipped"));
-    }
-    if (timer.activeTaskId === id) timer.stopTimer();
-    persistSkipped(skippedTaskIds.includes(id) ? skippedTaskIds : [...skippedTaskIds, id]);
-  }
-
-  function unskipTask(id: string) { persistSkipped(skippedTaskIds.filter((s) => s !== id)); }
-  function unskipAll()            { persistSkipped([]); }
-
-  function deleteTask(id: string) {
-    if (timer.activeTaskId === id) timer.stopTimer();
-    persistTasks(tasks.filter((t) => t.id !== id));
-    persistSkipped(skippedTaskIds.filter((s) => s !== id));
-    if (editingTaskId === id) resetTaskForm();
-  }
-
-  function resetDay() {
-    persistTasks(tasks.map((t) => ({ ...t, done: false })));
-    persistSkipped([]); timer.stopTimer();
-  }
-
-  function clearAllTasks() {
-    if (!window.confirm("Clear all tasks? This cannot be undone.")) return;
-    persistTasks([]); persistSkipped([]); resetTaskForm(); timer.stopTimer();
-  }
-
-  function resetTaskForm() { setTaskForm(emptyTaskForm); setEditingTaskId(null); }
-
-  function startEditing(task: Task) {
-    setEditingTaskId(task.id);
-    setTaskForm({ title: task.title, type: task.type, energy: task.energy, creativity: task.creativity, duration: task.duration, importance: task.importance, urgency: task.urgency, preferredSegment: task.preferredSegment });
-    setTimeout(() => { formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); titleInputRef.current?.focus(); }, 50);
-  }
-
-  function addTask() {
-    if (!taskForm.title.trim()) return;
-    if (editingTaskId) {
-      persistTasks(tasks.map((t) => t.id === editingTaskId ? { ...t, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration), importance: Number(taskForm.importance), urgency: Number(taskForm.urgency) } : t));
-    } else {
-      persistTasks([...tasks, { id: crypto.randomUUID(), done: false, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration), importance: Number(taskForm.importance), urgency: Number(taskForm.urgency) }]);
-    }
-    resetTaskForm();
-  }
-
-  function addFixedEvent() {
-    if (!eventForm.title.trim() || eventFormError) return;
-    persistEvents([...fixedEvents, { id: crypto.randomUUID(), ...eventForm, startHour: Number(eventForm.startHour), startMinute: Number(eventForm.startMinute), endHour: Number(eventForm.endHour), endMinute: Number(eventForm.endMinute) }]);
-    setEventForm(emptyEventForm);
-  }
-
-  function deleteFixedEvent(id: string) { persistEvents(fixedEvents.filter((e) => e.id !== id)); }
-
-  function handleStartTask(id: string) {
-    if (timer.activeTaskId === id) timer.stopTimer(); else timer.startTimer(id);
-  }
-
-  function syncToNow() { const n = new Date(); persistHour(n.getHours()); persistMinute(n.getMinutes()); }
-
-  function handleEnergyChange(val: EnergyStateValue) {
-    persistEnergy(val);
-    if (val === "tired") setQuickMode(true); else setQuickMode(false);
-  }
 
   const learningInsights = useMemo(() =>
     Object.entries(learningMap)
@@ -762,572 +671,707 @@ export default function DayPlannerDecidesForYou() {
     [learningMap]
   );
 
-  // ── Reusable task card ────────────────────────────────────────────────────────
-  function TaskCard({ task, index, dimmed = false }: { task: RankedTask; index?: number; dimmed?: boolean }) {
-    const isEditing     = editingTaskId === task.id;
-    const isTimerActive = timer.activeTaskId === task.id;
+  // ── Persist helpers ───────────────────────────────────────────────────────────
+  function persistTasks(next: Task[])            { setTasks(next);          writeStorage(SK_TASKS,    next); }
+  function persistEvents(next: FixedEvent[])     { setFixedEvents(next);    writeStorage(SK_EVENTS,   next); }
+  function persistEnergy(next: EnergyStateValue) { setEnergyStateValue(next); writeStorage(SK_ENERGY, next); }
+  function persistHour(next: number)             { setCurrentHour(next);    writeStorage(SK_HOUR,     next); }
+  function persistMinute(next: number)           { setCurrentMinute(next);  writeStorage(SK_MINUTE,   next); }
+  function persistSkipped(next: string[])        { setSkippedTaskIds(next); writeStorage(SK_SKIPPED,  next); }
+  function persistLearning(next: LearningMap)    { setLearningMap(next);    writeStorage(SK_LEARNING, next); }
+
+  function addLogEntry(task: Task, outcome: OutcomeType) {
+    const entry: TaskLogEntry = {
+      id: crypto.randomUUID(), taskId: task.id, taskTitle: task.title,
+      taskType: task.type, taskDuration: task.duration, outcome,
+      segment: plan.segment.key, energyState: energyStateValue,
+      timestamp: Date.now(), date: todayStr(),
+    };
+    const next = [...taskLog, entry];
+    setTaskLog(next); writeStorage(SK_LOG, next);
+  }
+
+  // ── Action handlers ───────────────────────────────────────────────────────────
+  function markDone(id: string) {
+    const task = tasks.find((t) => t.id === id);
+    if (task) { addLogEntry(task, "done"); persistLearning(recordOutcome(learningMap, task.type, plan.segment.key, energyStateValue, "done")); }
+    if (timer.activeTaskId === id) timer.stopTimer();
+    persistTasks(tasks.map((t) => t.id === id ? { ...t, done: true } : t));
+    persistSkipped(skippedTaskIds.filter((s) => s !== id));
+  }
+
+  function skipTask(id: string) {
+    const task = tasks.find((t) => t.id === id);
+    if (task) { addLogEntry(task, "skipped"); persistLearning(recordOutcome(learningMap, task.type, plan.segment.key, energyStateValue, "skipped")); }
+    if (timer.activeTaskId === id) timer.stopTimer();
+    persistSkipped(skippedTaskIds.includes(id) ? skippedTaskIds : [...skippedTaskIds, id]);
+  }
+
+  function unskipTask(id: string)  { persistSkipped(skippedTaskIds.filter((s) => s !== id)); }
+  function unskipAll()             { persistSkipped([]); }
+
+  function deleteTask(id: string) {
+    if (timer.activeTaskId === id) timer.stopTimer();
+    persistTasks(tasks.filter((t) => t.id !== id));
+    persistSkipped(skippedTaskIds.filter((s) => s !== id));
+    if (editingTaskId === id) closeTaskModal();
+  }
+
+  function resetDay() { persistTasks(tasks.map((t) => ({ ...t, done: false }))); persistSkipped([]); timer.stopTimer(); }
+
+  function handleEnergyChange(val: EnergyStateValue) {
+    persistEnergy(val);
+    setQuickMode(val === "tired");
+  }
+
+  function syncToNow() { const n = new Date(); persistHour(n.getHours()); persistMinute(n.getMinutes()); }
+
+  // ── Task modal helpers ────────────────────────────────────────────────────────
+  function openAddTaskModal() {
+    setEditingTaskId(null);
+    setTaskForm(emptyTaskForm);
+    setShowTaskModal(true);
+  }
+
+  function openEditTaskModal(task: Task) {
+    setEditingTaskId(task.id);
+    setTaskForm({ title: task.title, type: task.type, energy: task.energy, creativity: task.creativity, duration: task.duration, importance: task.importance, urgency: task.urgency, preferredSegment: task.preferredSegment });
+    setShowTaskModal(true);
+    setTimeout(() => titleInputRef.current?.focus(), 80);
+  }
+
+  function closeTaskModal() { setShowTaskModal(false); setEditingTaskId(null); setTaskForm(emptyTaskForm); }
+
+  function saveTask() {
+    if (!taskForm.title.trim()) return;
+    if (editingTaskId) {
+      persistTasks(tasks.map((t) => t.id === editingTaskId ? { ...t, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration), importance: Number(taskForm.importance), urgency: Number(taskForm.urgency) } : t));
+    } else {
+      persistTasks([...tasks, { id: crypto.randomUUID(), done: false, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration), importance: Number(taskForm.importance), urgency: Number(taskForm.urgency) }]);
+    }
+    closeTaskModal();
+  }
+
+  // ── Event modal helpers ───────────────────────────────────────────────────────
+  function openAddEventModal() { setEventForm(emptyEventForm); setShowEventModal(true); }
+  function closeEventModal()   { setShowEventModal(false); setEventForm(emptyEventForm); }
+
+  function saveEvent() {
+    if (!eventForm.title.trim() || eventFormError) return;
+    persistEvents([...fixedEvents, { id: crypto.randomUUID(), ...eventForm, startHour: Number(eventForm.startHour), startMinute: Number(eventForm.startMinute), endHour: Number(eventForm.endHour), endMinute: Number(eventForm.endMinute) }]);
+    closeEventModal();
+  }
+
+  function deleteFixedEvent(id: string) { persistEvents(fixedEvents.filter((e) => e.id !== id)); }
+  function handleStartTask(id: string)  { if (timer.activeTaskId === id) timer.stopTimer(); else timer.startTimer(id); }
+
+  // ── Shared sub-components ─────────────────────────────────────────────────────
+
+  // Modal wrapper
+  function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
     return (
-      <div className={`rounded-2xl border p-4 transition ${isEditing ? "border-violet-300 bg-violet-50" : dimmed ? "border-slate-200 bg-slate-50 opacity-70" : "border-slate-200"}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              {index !== undefined && (
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs font-medium text-white shrink-0">{index + 1}</span>
-              )}
-              <div className="font-medium text-slate-900">{task.title}</div>
-              {isEditing && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-700">editing</span>}
-              {isTimerActive && (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
-                  <Timer className="mr-1 inline h-3 w-3" />{timer.formatElapsed()}
-                </span>
-              )}
-              {task.learningBonus !== 0 && (
-                <span className={`rounded-full px-2 py-0.5 text-xs ${task.learningBonus > 0 ? "bg-teal-100 text-teal-700" : "bg-rose-100 text-rose-700"}`}>
-                  <TrendingUp className="mr-1 inline h-3 w-3" />{task.learningBonus > 0 ? `+${task.learningBonus}` : task.learningBonus} learned
-                </span>
-              )}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-slate-200 px-2 py-1 text-slate-700">{task.type}</span>
-              <span className={`rounded-full px-2 py-1 ${energyBadgeCls(task.energy)}`}>⚡ {task.energy}</span>
-              <span className={`rounded-full px-2 py-1 ${creativityBadgeCls(task.creativity)}`}>✦ {task.creativity}</span>
-              <span className="rounded-full border border-slate-200 px-2 py-1 text-slate-700">{task.duration} min</span>
-              <span className="rounded-full border border-slate-200 px-2 py-1 text-slate-700">imp {task.importance}</span>
-              <span className="rounded-full border border-slate-200 px-2 py-1 text-slate-700">urg {task.urgency}</span>
-            </div>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+        <div className="relative z-10 w-full max-w-lg rounded-3xl bg-white shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+            <button onClick={onClose} className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200">Close</button>
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-sm font-medium text-slate-900">{Math.round(task.score)}</div>
-            <div className="text-xs text-slate-500">fit score</div>
-          </div>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={() => markDone(task.id)} className={btnCls("secondary")}><CheckCircle2 className="mr-2 h-4 w-4" /> Done</button>
-          {dimmed
-            ? <button onClick={() => unskipTask(task.id)} className={btnCls("ghost")}>Restore</button>
-            : <button onClick={() => skipTask(task.id)}  className={btnCls("ghost")}>Skip</button>}
-          {!dimmed && (
-            <button onClick={() => handleStartTask(task.id)} className={btnCls("ghost")}>
-              <PlayCircle className="mr-2 h-4 w-4" />{isTimerActive ? "Stop" : "Start"}
-            </button>
-          )}
-          <button onClick={() => startEditing(task)} className={btnCls("ghost")}>Edit</button>
-          <button onClick={() => deleteTask(task.id)} className={btnCls("ghost")}><Trash2 className="mr-2 h-4 w-4" /> Delete</button>
+          <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-4">{children}</div>
         </div>
       </div>
     );
   }
 
-  // ── Log row ───────────────────────────────────────────────────────────────────
+  // Compact task row for the "My day" list
+  function TaskRow({ task, index }: { task: RankedTask; index: number }) {
+    const isDone    = task.done;
+    const isSkipped = skippedTaskIds.includes(task.id);
+    const isTimer   = timer.activeTaskId === task.id;
+    const colors    = taskTypeColor(task.type);
+
+    return (
+      <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3 transition ${isDone ? "opacity-50 border-slate-100 bg-slate-50" : isSkipped ? "opacity-50 border-dashed border-slate-200" : "border-slate-200 bg-white"}`}>
+        {/* Rank badge */}
+        <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium ${isDone ? "bg-emerald-100 text-emerald-700" : "bg-slate-900 text-white"}`}>
+          {isDone ? "✓" : index + 1}
+        </span>
+
+        {/* Title + meta */}
+        <div className="flex-1 min-w-0">
+          <div className={`text-sm font-medium truncate ${isDone ? "line-through text-slate-400" : "text-slate-900"}`}>{task.title}</div>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <span className={`text-[10px] rounded-full px-1.5 py-0.5 border ${colors.bg} ${colors.border} ${colors.text}`}>{task.type}</span>
+            <span className="text-[10px] text-slate-400">{task.duration} min</span>
+            {isTimer && <span className="text-[10px] text-emerald-600 font-medium">{timer.formatElapsed()}</span>}
+            {task.learningBonus !== 0 && (
+              <span className={`text-[10px] font-medium ${task.learningBonus > 0 ? "text-teal-600" : "text-rose-500"}`}>
+                {task.learningBonus > 0 ? `+${task.learningBonus}` : task.learningBonus}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 shrink-0">
+          {!isDone && (
+            <button onClick={() => markDone(task.id)} title="Done" className="rounded-xl bg-emerald-50 p-2 text-emerald-700 hover:bg-emerald-100">
+              <CheckCircle2 className="h-4 w-4" />
+            </button>
+          )}
+          {!isDone && !isSkipped && (
+            <button onClick={() => handleStartTask(task.id)} title={isTimer ? "Stop" : "Start"} className="rounded-xl bg-slate-100 p-2 text-slate-600 hover:bg-slate-200">
+              <PlayCircle className="h-4 w-4" />
+            </button>
+          )}
+          {!isDone && isSkipped  && <button onClick={() => unskipTask(task.id)} title="Restore" className="rounded-xl bg-amber-50 p-2 text-amber-700 hover:bg-amber-100 text-xs px-2 py-1.5 font-medium">↩</button>}
+          {!isDone && !isSkipped && <button onClick={() => skipTask(task.id)}   title="Skip"    className="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 text-xs">—</button>}
+          <button onClick={() => openEditTaskModal(task)} title="Edit" className="rounded-xl bg-slate-100 p-2 text-slate-500 hover:bg-slate-200">
+            <Sparkles className="h-4 w-4" />
+          </button>
+          <button onClick={() => deleteTask(task.id)} title="Delete" className="rounded-xl bg-rose-50 p-2 text-rose-500 hover:bg-rose-100">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Compact event row
+  function EventRow({ event }: { event: FixedEvent }) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-white truncate">{event.title}</div>
+          <div className="text-xs text-slate-400 mt-0.5">{formatTime(event.startHour, event.startMinute)} – {formatTime(event.endHour, event.endMinute)}</div>
+        </div>
+        <button onClick={() => deleteFixedEvent(event.id)} className="rounded-xl bg-slate-700 p-2 text-slate-300 hover:bg-slate-600">
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
+  // Log row used in timeline tab history
   function LogRow({ entry }: { entry: TaskLogEntry }) {
     const done = entry.outcome === "done";
     return (
-      <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${done ? "bg-emerald-50 text-emerald-900" : "bg-slate-100 text-slate-600"}`}>
+      <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${done ? "bg-emerald-50 text-emerald-900" : "bg-slate-100 text-slate-500"}`}>
         <div className="flex items-center gap-2 min-w-0">
-          {done ? <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> : <span className="text-slate-400 shrink-0">—</span>}
+          {done ? <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> : <span className="text-slate-300 shrink-0">—</span>}
           <span className={`truncate ${!done ? "line-through" : ""}`}>{entry.taskTitle}</span>
-          <span className="text-xs opacity-60 shrink-0">{entry.taskType} · {entry.taskDuration} min</span>
+          <span className="text-xs opacity-50 shrink-0">{entry.taskDuration} min</span>
         </div>
-        <span className="text-xs opacity-60 shrink-0 ml-2">{entry.segment}</span>
+        <span className="text-xs opacity-50 shrink-0 ml-2">{entry.segment}</span>
       </div>
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
-  return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-
-        {/* Header */}
-        <div className={cardCls}>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Day Planner That Decides For You</h1>
-              <p className="mt-1 text-sm text-slate-600">Learns from your completions and skips to improve suggestions over time.</p>
+  // ── Tab: Now ──────────────────────────────────────────────────────────────────
+  function TabNow() {
+    return (
+      <div className="space-y-4">
+        {/* Do this now */}
+        <div className="rounded-3xl border border-slate-900 bg-slate-900 p-6 text-white shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+              <Brain className="h-4 w-4" /> Planner decision
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={resetDay}      className={btnCls("secondary")}>Reset day</button>
-              <button onClick={unskipAll}     className={btnCls("ghost")}>Unskip all</button>
-              <button onClick={clearAllTasks} className={btnCls("ghost")}>Clear all</button>
-            </div>
+            {quickMode && (
+              <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs text-amber-300">
+                <Clock className="mr-1 inline h-3 w-3" /> Quick · ≤{QUICK_TASK_MAX_DURATION} min
+              </span>
+            )}
           </div>
+
+          {plan.currentEvent ? (
+            <>
+              <h2 className="mt-3 text-2xl font-semibold">You have: {plan.currentEvent.title}</h2>
+              <p className="mt-1 text-sm text-slate-400">This time is blocked by a fixed event.</p>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full bg-white/10 px-3 py-1">{plan.segment.label}</span>
+                <span className="rounded-full bg-white/10 px-3 py-1">
+                  {formatTime(plan.currentEvent.startHour, plan.currentEvent.startMinute)}–{formatTime(plan.currentEvent.endHour, plan.currentEvent.endMinute)}
+                </span>
+              </div>
+            </>
+          ) : plan.nowTask ? (
+            <>
+              <h2 className="mt-3 text-2xl font-semibold leading-snug">Do this now:<br />{plan.nowTask.title}</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                {plan.nowTask.learningBonus > 0 ? "Boosted by your history." : plan.nowTask.learningBonus < 0 ? "You often skip this type here — still your best fit." : "Best fit for your energy and time."}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full bg-white/10 px-3 py-1">{plan.nowTask.duration} min</span>
+                <span className="rounded-full bg-white/10 px-3 py-1">{plan.nowTask.type}</span>
+                <span className="rounded-full bg-white/10 px-3 py-1">⚡ {plan.nowTask.energy}</span>
+                <span className="rounded-full bg-white/10 px-3 py-1">✦ {plan.nowTask.creativity}</span>
+                {plan.nowTask.learningBonus !== 0 && (
+                  <span className={`rounded-full px-3 py-1 ${plan.nowTask.learningBonus > 0 ? "bg-teal-500/20 text-teal-300" : "bg-rose-500/20 text-rose-300"}`}>
+                    <TrendingUp className="mr-1 inline h-3 w-3" />{plan.nowTask.learningBonus > 0 ? `+${plan.nowTask.learningBonus}` : plan.nowTask.learningBonus}
+                  </span>
+                )}
+                {timer.activeTaskId === plan.nowTask.id && (
+                  <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-emerald-300">
+                    <Timer className="mr-1 inline h-3 w-3" />{timer.formatElapsed()}
+                  </span>
+                )}
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button onClick={() => plan.nowTask && markDone(plan.nowTask.id)} className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-100">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Done
+                </button>
+                <button onClick={() => plan.nowTask && skipTask(plan.nowTask.id)} className="rounded-2xl bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20">Skip</button>
+                <button onClick={() => plan.nowTask && handleStartTask(plan.nowTask.id)} className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20">
+                  <PlayCircle className="h-4 w-4" />
+                  {timer.activeTaskId === plan.nowTask.id ? "Stop" : "Start"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 text-slate-400">
+              {quickMode ? `No quick tasks left (≤${QUICK_TASK_MAX_DURATION} min). Turn off quick mode to see all.` : "You're done for today. Nice work."}
+            </div>
+          )}
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[380px,1fr]">
-          {/* ── Left sidebar ── */}
-          <div className="space-y-6">
-
-            {/* Energy + quick mode */}
-            <div className={cardCls}>
-              <h2 className="text-lg font-semibold text-slate-900">How are you feeling?</h2>
-              <div className="mt-4 grid gap-3">
-                {ENERGY_STATES.map((state) => {
-                  const Icon = state.icon;
-                  const active = state.value === energyStateValue;
-                  return (
-                    <button key={state.value} onClick={() => handleEnergyChange(state.value)} className={pillCls(active)}>
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-5 w-5" />
-                        <div>
-                          <div className="font-medium">{state.label}</div>
-                          <div className={`text-xs ${active ? "text-slate-300" : "text-slate-500"}`}>
-                            {state.value === "tired" ? "Auto-enables quick task mode." : "Planner adjusts difficulty."}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Quick task toggle */}
-              <div className="mt-4">
-                <button
-                  onClick={() => setQuickMode((q) => !q)}
-                  className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${quickMode ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
+        {/* Energy picker */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">How are you feeling?</h2>
+          <div className="mt-3 grid gap-2">
+            {ENERGY_STATES.map((state) => {
+              const Icon  = state.icon;
+              const active = state.value === energyStateValue;
+              return (
+                <button key={state.value} onClick={() => handleEnergyChange(state.value)}
+                  className={`rounded-2xl border px-4 py-3 text-left transition ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"}`}>
+                  <div className="flex items-center gap-3">
+                    <Icon className="h-5 w-5 shrink-0" />
                     <div>
-                      <div>Quick task mode {quickMode ? "ON" : "OFF"}</div>
-                      <div className={`text-xs font-normal ${quickMode ? "text-amber-700" : "text-slate-500"}`}>Only shows tasks ≤ {QUICK_TASK_MAX_DURATION} min</div>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Time picker */}
-            <div className={cardCls}>
-              <h2 className="text-lg font-semibold text-slate-900">What time is it?</h2>
-              <div className="mt-4 space-y-3">
-                <input type="range" min="6" max="22" value={currentHour} onChange={(e) => persistHour(Number(e.target.value))} className="w-full" />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-500">Hour</label>
-                    <input className={inputCls} type="number" min={6} max={22} value={currentHour} onChange={(e) => persistHour(Math.min(22, Math.max(6, Number(e.target.value))))} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-500">Minute</label>
-                    <input className={inputCls} type="number" min={0} max={59} value={currentMinute} onChange={(e) => persistMinute(Math.min(59, Math.max(0, Number(e.target.value))))} />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">{formatTime(currentHour, currentMinute)}</span>
-                  <span>{plan.segment.label}</span>
-                </div>
-                <button onClick={syncToNow} className={`${btnCls("ghost")} w-full text-xs`}>
-                  Sync to current time ({formatTime(new Date().getHours(), new Date().getMinutes())})
-                </button>
-              </div>
-            </div>
-
-            {/* Add fixed event */}
-            <div className={cardCls}>
-              <h2 className="text-lg font-semibold text-slate-900">Add fixed event</h2>
-              <div className="mt-4 space-y-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Event name</label>
-                  <input className={inputCls} placeholder="e.g. Lecture" value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} />
-                </div>
-                {(["Start", "End"] as const).map((label) => {
-                  const isEnd = label === "End";
-                  return (
-                    <div key={label}>
-                      <label className="mb-2 block text-sm font-medium text-slate-700">{label} time</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="mb-1 block text-xs text-slate-500">Hour</label>
-                          <input className={inputCls} type="number" min={6} max={isEnd ? 23 : 22}
-                            value={isEnd ? eventForm.endHour : eventForm.startHour}
-                            onChange={(e) => setEventForm({ ...eventForm, [isEnd ? "endHour" : "startHour"]: Number(e.target.value) })} />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs text-slate-500">Minute</label>
-                          <input className={inputCls} type="number" min={0} max={59}
-                            value={isEnd ? eventForm.endMinute : eventForm.startMinute}
-                            onChange={(e) => setEventForm({ ...eventForm, [isEnd ? "endMinute" : "startMinute"]: Number(e.target.value) })} />
-                        </div>
+                      <div className="font-medium text-sm">{state.label}</div>
+                      <div className={`text-xs ${active ? "text-slate-400" : "text-slate-500"}`}>
+                        {state.value === "tired" ? "Quick task mode auto-enabled." : "Planner adjusts difficulty."}
                       </div>
                     </div>
-                  );
-                })}
-                {eventFormError && <p className="text-xs text-red-600">{eventFormError}</p>}
-                {!eventFormError && eventForm.title.trim() && (
-                  <p className="text-xs text-slate-500">{formatTime(eventForm.startHour, eventForm.startMinute)} → {formatTime(eventForm.endHour, eventForm.endMinute)}</p>
-                )}
-                <button onClick={addFixedEvent} disabled={!!eventFormError || !eventForm.title.trim()}
-                  className={`${btnCls("secondary")} w-full disabled:opacity-40 disabled:cursor-not-allowed`}>
-                  Add fixed event
+                  </div>
                 </button>
-              </div>
-            </div>
-
-            {/* Fixed events list */}
-            <div className={cardCls}>
-              <h2 className="text-lg font-semibold text-slate-900">Fixed events</h2>
-              <div className="mt-4 space-y-3">
-                {fixedEvents.length ? fixedEvents.map((ev) => (
-                  <div key={ev.id} className="rounded-2xl border border-slate-200 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium text-slate-900">{ev.title}</div>
-                        <div className="mt-1 text-sm text-slate-500">{formatTime(ev.startHour, ev.startMinute)} – {formatTime(ev.endHour, ev.endMinute)}</div>
-                      </div>
-                      <button onClick={() => deleteFixedEvent(ev.id)} className={btnCls("ghost")}><Trash2 className="mr-2 h-4 w-4" /> Delete</button>
-                    </div>
-                  </div>
-                )) : <div className="rounded-2xl border border-slate-200 p-4 text-sm text-slate-600">No fixed events yet.</div>}
-              </div>
-            </div>
-
-            {/* Add / edit task form */}
-            <div ref={formRef} className={cardCls}>
-              <h2 className="text-lg font-semibold text-slate-900">{editingTaskId ? "✏️ Editing task" : "Add a task"}</h2>
-              {editingTaskId && <p className="mt-1 text-xs text-violet-600 font-medium">Make changes then click Save below.</p>}
-              <div className="mt-4 space-y-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Task name</label>
-                  <input ref={titleInputRef} className={inputCls} placeholder="e.g. Write essay intro" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">Type</label>
-                    <select className={inputCls} value={taskForm.type} onChange={(e) => setTaskForm({ ...taskForm, type: e.target.value as TaskType })}>
-                      {TASK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">Energy needed</label>
-                    <select className={inputCls} value={taskForm.energy} onChange={(e) => setTaskForm({ ...taskForm, energy: e.target.value as EnergyLevel })}>
-                      {(["low", "medium", "high"] as EnergyLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Creativity needed</label>
-                  <select className={inputCls} value={taskForm.creativity} onChange={(e) => setTaskForm({ ...taskForm, creativity: e.target.value as CreativityLevel })}>
-                    {(["low", "medium", "high"] as CreativityLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
-                  </select>
-                  <p className="mt-1 text-xs text-slate-500">High = brainstorming, writing, design · Low = admin, chores</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">Duration (min)</label>
-                    <input className={inputCls} type="text" inputMode="numeric" placeholder="e.g. 45"
-                      value={taskForm.duration === 0 ? "" : taskForm.duration}
-                      onChange={(e) => { const raw = e.target.value.replace(/[^0-9]/g, ""); setTaskForm({ ...taskForm, duration: raw === "" ? 0 : Number(raw) }); }} />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">Best time of day</label>
-                    <select className={inputCls} value={taskForm.preferredSegment} onChange={(e) => setTaskForm({ ...taskForm, preferredSegment: e.target.value as SegmentKey })}>
-                      {DAY_SEGMENTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">Importance</label>
-                    <select className={inputCls} value={taskForm.importance} onChange={(e) => setTaskForm({ ...taskForm, importance: Number(e.target.value) })}>
-                      <option value={1}>1 — barely matters</option>
-                      <option value={2}>2 — nice to do</option>
-                      <option value={3}>3 — should do</option>
-                      <option value={4}>4 — important</option>
-                      <option value={5}>5 — critical</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">Urgency</label>
-                    <select className={inputCls} value={taskForm.urgency} onChange={(e) => setTaskForm({ ...taskForm, urgency: Number(e.target.value) })}>
-                      <option value={1}>1 — no deadline</option>
-                      <option value={2}>2 — this week</option>
-                      <option value={3}>3 — in a few days</option>
-                      <option value={4}>4 — tomorrow</option>
-                      <option value={5}>5 — due today</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={addTask} className={`${btnCls()} w-full`}>
-                    <Sparkles className="mr-2 h-4 w-4" />{editingTaskId ? "Save changes" : "Add task"}
-                  </button>
-                  {editingTaskId && <button onClick={resetTaskForm} className={btnCls("secondary")}>Cancel</button>}
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
 
-          {/* ── Main content ── */}
-          <div className="space-y-6">
-
-            {/* Do this now */}
-            <div className="rounded-3xl border border-slate-900 bg-slate-900 p-6 text-white shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-slate-300">
-                  <Brain className="h-4 w-4" /> Planner decision
-                </div>
-                {quickMode && (
-                  <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs text-amber-300">
-                    <Clock className="mr-1 inline h-3 w-3" /> Quick mode · ≤{QUICK_TASK_MAX_DURATION} min
-                  </span>
-                )}
-              </div>
-
-              {plan.currentEvent ? (
-                <>
-                  <h2 className="mt-3 text-3xl font-semibold">You have: {plan.currentEvent.title}</h2>
-                  <p className="mt-2 max-w-2xl text-sm text-slate-300">This time is blocked by a fixed event.</p>
-                  <div className="mt-5 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full bg-white/10 px-3 py-1">{plan.segment.label}</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">
-                      {formatTime(plan.currentEvent.startHour, plan.currentEvent.startMinute)}–{formatTime(plan.currentEvent.endHour, plan.currentEvent.endMinute)}
-                    </span>
-                  </div>
-                </>
-              ) : plan.nowTask ? (
-                <>
-                  <h2 className="mt-3 text-3xl font-semibold">Do this now: {plan.nowTask.title}</h2>
-                  <p className="mt-2 max-w-2xl text-sm text-slate-300">
-                    {plan.nowTask.learningBonus > 0
-                      ? "Boosted by your history — you tend to complete this type here."
-                      : plan.nowTask.learningBonus < 0
-                      ? "You often skip this type here, but it ranked highest anyway."
-                      : "Fits your energy, time of day, importance and urgency."}
-                  </p>
-                  <div className="mt-5 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full bg-white/10 px-3 py-1">{plan.segment.label}</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">{plan.nowTask.duration} min</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">{plan.nowTask.type}</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">⚡ {plan.nowTask.energy}</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">✦ {plan.nowTask.creativity}</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1">Score: {Math.round(plan.nowTask.score)}</span>
-                    {plan.nowTask.learningBonus !== 0 && (
-                      <span className={`rounded-full px-3 py-1 ${plan.nowTask.learningBonus > 0 ? "bg-teal-500/20 text-teal-300" : "bg-rose-500/20 text-rose-300"}`}>
-                        <TrendingUp className="mr-1 inline h-3 w-3" />
-                        learned {plan.nowTask.learningBonus > 0 ? `+${plan.nowTask.learningBonus}` : plan.nowTask.learningBonus}
-                      </span>
-                    )}
-                    {timer.activeTaskId === plan.nowTask.id && (
-                      <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-emerald-300">
-                        <Timer className="mr-1 inline h-3 w-3" />{timer.formatElapsed()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button onClick={() => plan.nowTask && markDone(plan.nowTask.id)} className={btnCls("secondary")}>
-                      <CheckCircle2 className="mr-2 h-4 w-4" /> Mark done
-                    </button>
-                    <button onClick={() => plan.nowTask && skipTask(plan.nowTask.id)} className={btnCls("ghost")}>Skip</button>
-                    <button onClick={() => plan.nowTask && handleStartTask(plan.nowTask.id)} className={btnCls("ghost")}>
-                      <PlayCircle className="mr-2 h-4 w-4" />{timer.activeTaskId === plan.nowTask.id ? "Stop timer" : "Start task"}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="mt-4 text-slate-300">
-                  {quickMode
-                    ? `No quick tasks left (≤${QUICK_TASK_MAX_DURATION} min). Turn off quick mode to see all tasks.`
-                    : "You are done for today. Nice work."}
-                </div>
-              )}
-            </div>
-
-            {/* ── Day Timeline ── */}
-            <div className={cardCls}>
-              <button
-                onClick={() => setShowTimeline((v) => !v)}
-                className="flex w-full items-center justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5 text-slate-600" />
-                  <h2 className="text-lg font-semibold text-slate-900">Day timeline</h2>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                    tasks scheduled from {formatTime(currentHour, currentMinute)} onward
-                  </span>
-                </div>
-                {showTimeline
-                  ? <ChevronUp className="h-4 w-4 text-slate-500" />
-                  : <ChevronDown className="h-4 w-4 text-slate-500" />}
-              </button>
-
-              {showTimeline && (
-                <div className="mt-4">
-                  {/* Legend */}
-                  <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-violet-200 border border-violet-300" /> deep work</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-200 border border-emerald-300" /> physical</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-amber-200 border border-amber-300" /> life admin</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-200 border border-slate-300" /> chore</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-200 border border-rose-300" /> recovery</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-800" /> fixed event</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2 w-4 border-t-2 border-red-400" /> now</span>
-                  </div>
-                  <div className="overflow-hidden rounded-2xl border border-slate-100">
-                    <DayTimeline
-                      blocks={timelineBlocks}
-                      currentHour={currentHour}
-                      currentMinute={currentMinute}
-                      onTaskClick={(task) => startEditing(task)}
-                    />
-                  </div>
-                  <p className="mt-2 text-xs text-slate-400">
-                    Click any task block to edit it. Tasks are scheduled sequentially from now, filling gaps around fixed events.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Ranked list */}
-            <div className={cardCls}>
-              <h2 className="text-lg font-semibold text-slate-900">Recommended order for today</h2>
-              <div className="mt-4 space-y-3">
-                {plan.ranked.length
-                  ? plan.ranked.map((task, index) => <TaskCard key={task.id} task={task} index={index} />)
-                  : <div className="rounded-2xl border border-slate-200 p-4 text-sm text-slate-600">
-                      {quickMode ? `No tasks ≤ ${QUICK_TASK_MAX_DURATION} min. Add a quick task or turn off quick mode.` : "No tasks left. Add a task or reset the day."}
-                    </div>}
+          {/* Quick mode toggle */}
+          <button onClick={() => setQuickMode((q) => !q)}
+            className={`mt-3 w-full rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${quickMode ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 shrink-0" />
+              <div>
+                <div>Quick task mode {quickMode ? "ON" : "OFF"}</div>
+                <div className={`text-xs font-normal ${quickMode ? "text-amber-700" : "text-slate-500"}`}>Only shows tasks ≤ {QUICK_TASK_MAX_DURATION} min</div>
               </div>
             </div>
+          </button>
+        </div>
 
-            {/* Skipped */}
-            {skippedTasks.length > 0 && (
-              <div className={cardCls}>
-                <h2 className="text-lg font-semibold text-slate-900">Skipped ({skippedTasks.length})</h2>
-                <div className="mt-4 space-y-3">
-                  {skippedTasks.map((t) => <TaskCard key={t.id} task={{ ...t, score: 0, learningBonus: 0 }} dimmed />)}
-                </div>
+        {/* Time picker */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">What time is it?</h2>
+          <div className="mt-3 space-y-3">
+            <input type="range" min="6" max="22" value={currentHour} onChange={(e) => persistHour(Number(e.target.value))} className="w-full" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">Hour</label>
+                <input className={inputCls} type="number" min={6} max={22} value={currentHour} onChange={(e) => persistHour(Math.min(22, Math.max(6, Number(e.target.value))))} />
               </div>
-            )}
-
-            {/* Done today */}
-            {doneTasks.length > 0 && (
-              <div className={cardCls}>
-                <h2 className="text-lg font-semibold text-slate-900">Done today ({doneTasks.length})</h2>
-                <div className="mt-4 space-y-3">
-                  {doneTasks.map((task) => (
-                    <div key={task.id} className="flex items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                        <span className="font-medium text-emerald-900 line-through decoration-emerald-400">{task.title}</span>
-                      </div>
-                      <span className="text-xs text-emerald-700">{task.duration} min</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* History */}
-            <div className={cardCls}>
-              <button onClick={() => setShowHistory((h) => !h)} className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <History className="h-5 w-5 text-slate-600" />
-                  <h2 className="text-lg font-semibold text-slate-900">History</h2>
-                  {(todayLog.length > 0 || yesterdayLog.length > 0) && (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      {todayDone.length} done · {todaySkipped.length} skipped today
-                    </span>
-                  )}
-                </div>
-                {showHistory ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
-              </button>
-
-              {showHistory && (
-                <div className="mt-4 space-y-5">
-                  <div>
-                    <div className="mb-2 text-sm font-medium text-slate-700">Today</div>
-                    {todayLog.length === 0
-                      ? <div className="text-sm text-slate-500">No activity logged yet today.</div>
-                      : <div className="space-y-2">
-                          {[...todayDone, ...todaySkipped].sort((a, b) => a.timestamp - b.timestamp).map((e) => <LogRow key={e.id} entry={e} />)}
-                        </div>}
-                  </div>
-                  <div>
-                    <div className="mb-2 text-sm font-medium text-slate-700">
-                      Yesterday{yesterdayLog.length > 0 ? ` — ${yestDone.length} done · ${yestSkipped.length} skipped` : ""}
-                    </div>
-                    {yesterdayLog.length === 0
-                      ? <div className="text-sm text-slate-500">No activity logged for yesterday.</div>
-                      : <div className="space-y-2">
-                          {[...yestDone, ...yestSkipped].sort((a, b) => a.timestamp - b.timestamp).map((e) => <LogRow key={e.id} entry={e} />)}
-                        </div>}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Learning insights */}
-            <div className={cardCls}>
-              <button onClick={() => setShowLearningInsights((s) => !s)} className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-slate-600" />
-                  <h2 className="text-lg font-semibold text-slate-900">What the planner has learned</h2>
-                  {learningInsights.length > 0 && (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{learningInsights.length} patterns</span>
-                  )}
-                </div>
-                {showLearningInsights ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
-              </button>
-
-              {showLearningInsights && (
-                <div className="mt-4">
-                  {learningInsights.length === 0
-                    ? <p className="text-sm text-slate-500">Complete or skip at least {LEARNING_MIN_EVENTS} tasks in a given context (type × time × energy) to see patterns here.</p>
-                    : <div className="space-y-3">
-                        {learningInsights.map((ins) => (
-                          <div key={ins.key} className="rounded-2xl border border-slate-200 p-4">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <div className="font-medium text-slate-900 capitalize">{ins.type}</div>
-                                <div className="mt-0.5 text-xs text-slate-500 capitalize">{ins.segment} · {ins.energy} energy · {ins.done + ins.skipped} sessions</div>
-                              </div>
-                              <div className="text-right">
-                                <div className={`text-sm font-medium ${ins.rate >= 70 ? "text-emerald-700" : ins.rate <= 40 ? "text-rose-700" : "text-slate-700"}`}>{ins.rate}% done</div>
-                                <div className="text-xs text-slate-500">{ins.done}✓ {ins.skipped}✗</div>
-                              </div>
-                            </div>
-                            <div className="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                              <div className={`h-full rounded-full ${ins.rate >= 70 ? "bg-emerald-400" : ins.rate <= 40 ? "bg-rose-400" : "bg-amber-400"}`} style={{ width: `${ins.rate}%` }} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>}
-                  <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-xs text-slate-500">
-                    Subtle ±{LEARNING_MAX_BONUS}pt nudge based on your completion rate per task type × time window × energy level. Needs ≥{LEARNING_MIN_EVENTS} events per context before adjusting.
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* How it decides */}
-            <div className={cardCls}>
-              <h2 className="text-lg font-semibold text-slate-900">How it decides</h2>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                {[
-                  { n: "1", title: "Energy & creativity", desc: "Matches task demands to your current window." },
-                  { n: "2", title: "Time of day",          desc: "Morning = hard tasks. Evening = easy ones." },
-                  { n: "3", title: "Importance + urgency", desc: "Critical deadlines always rise to the top." },
-                  { n: "4", title: "Your history",          desc: `Subtle ±${LEARNING_MAX_BONUS}pt nudge from past completions and skips.` },
-                ].map(({ n, title, desc }) => (
-                  <div key={n} className="rounded-2xl border border-slate-200 p-4">
-                    <div className="font-medium text-slate-900">{n}. {title}</div>
-                    <p className="mt-1 text-sm text-slate-600">{desc}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-                Mode: <span className="font-medium text-slate-900">{energyState.label}</span> ·
-                Segment: <span className="font-medium text-slate-900">{plan.segment.label}</span> ·
-                Creativity: <span className={`font-medium ${plan.segment.creativity === "high" ? "text-purple-700" : plan.segment.creativity === "medium" ? "text-violet-700" : "text-slate-900"}`}>{plan.segment.creativity}</span> ·
-                Quick mode: <span className="font-medium text-slate-900">{quickMode ? "on" : "off"}</span> ·
-                Skipped: <span className="font-medium text-slate-900">{skippedTaskIds.length}</span> ·
-                Done: <span className="font-medium text-slate-900">{doneTasks.length}</span>
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">Minute</label>
+                <input className={inputCls} type="number" min={0} max={59} value={currentMinute} onChange={(e) => persistMinute(Math.min(59, Math.max(0, Number(e.target.value))))} />
               </div>
             </div>
-
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-semibold text-slate-900">{formatTime(currentHour, currentMinute)}</span>
+              <span className="text-slate-500">{plan.segment.label} · creativity {plan.segment.creativity}</span>
+            </div>
+            <button onClick={syncToNow} className={`${btnCls("ghost")} w-full text-xs`}>
+              Sync to now ({formatTime(new Date().getHours(), new Date().getMinutes())})
+            </button>
           </div>
         </div>
       </div>
+    );
+  }
+
+  // ── Tab: My day (tasks + events list) ────────────────────────────────────────
+  function TabTasks() {
+    const allRanked = useMemo<RankedTask[]>(() => {
+      return tasks.map((t) => {
+        const { base, learningBonus } = scoreTask(t, plan.segment, energyState, learningMap, quickMode);
+        return { ...t, score: base + learningBonus, learningBonus };
+      }).sort((a, b) => b.score - a.score);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tasks, plan.segment, energyState, learningMap, quickMode]);
+
+    const pending  = allRanked.filter((t) => !t.done && !skippedTaskIds.includes(t.id));
+    const skipped  = allRanked.filter((t) => !t.done && skippedTaskIds.includes(t.id));
+    const done     = allRanked.filter((t) => t.done);
+
+    return (
+      <div className="space-y-4">
+        {/* Action bar */}
+        <div className="flex gap-3">
+          <button onClick={openAddEventModal} className="flex-1 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800 transition">
+            + Fixed event
+          </button>
+          <button onClick={openAddTaskModal} className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 hover:bg-slate-50 transition shadow-sm">
+            + Task
+          </button>
+        </div>
+
+        {/* Utility bar */}
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={resetDay}  className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200">Reset day</button>
+          <button onClick={unskipAll} className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200">Unskip all</button>
+          <button onClick={() => { if (window.confirm("Clear all tasks?")) { persistTasks([]); persistSkipped([]); timer.stopTimer(); } }} className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-100">Clear all</button>
+        </div>
+
+        {/* Fixed events */}
+        {fixedEvents.length > 0 && (
+          <div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Fixed events</div>
+            <div className="space-y-2">
+              {[...fixedEvents].sort((a, b) => toMinutes(a.startHour, a.startMinute) - toMinutes(b.startHour, b.startMinute)).map((ev) => (
+                <EventRow key={ev.id} event={ev} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pending tasks */}
+        {pending.length > 0 && (
+          <div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Tasks — {pending.length} remaining
+            </div>
+            <div className="space-y-2">
+              {pending.map((task, i) => <TaskRow key={task.id} task={task} index={i} />)}
+            </div>
+          </div>
+        )}
+
+        {/* Skipped */}
+        {skipped.length > 0 && (
+          <div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Skipped</div>
+            <div className="space-y-2">
+              {skipped.map((task, i) => <TaskRow key={task.id} task={task} index={i} />)}
+            </div>
+          </div>
+        )}
+
+        {/* Done */}
+        {done.length > 0 && (
+          <div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Done today — {done.length}</div>
+            <div className="space-y-2">
+              {done.map((task, i) => <TaskRow key={task.id} task={task} index={i} />)}
+            </div>
+          </div>
+        )}
+
+        {pending.length === 0 && done.length === 0 && skipped.length === 0 && fixedEvents.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-400">
+            Nothing here yet — add a task or a fixed event above.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Tab: Timeline ─────────────────────────────────────────────────────────────
+  function TabTimeline() {
+    return (
+      <div className="space-y-4">
+        {/* Timeline card */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-slate-600" />
+              <h2 className="text-base font-semibold text-slate-900">Day timeline</h2>
+            </div>
+            <span className="text-xs text-slate-400">from {formatTime(currentHour, currentMinute)}</span>
+          </div>
+
+          {/* Legend */}
+          <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400">
+            {[
+              { label: "deep work",  bg: "bg-violet-200",  border: "border-violet-300"  },
+              { label: "physical",   bg: "bg-emerald-200", border: "border-emerald-300" },
+              { label: "life admin", bg: "bg-amber-200",   border: "border-amber-300"   },
+              { label: "chore",      bg: "bg-slate-200",   border: "border-slate-300"   },
+              { label: "recovery",   bg: "bg-rose-200",    border: "border-rose-300"    },
+              { label: "event",      bg: "bg-slate-800",   border: "border-slate-700"   },
+            ].map(({ label, bg, border }) => (
+              <span key={label} className="flex items-center gap-1">
+                <span className={`inline-block h-2.5 w-2.5 rounded-sm border ${bg} ${border}`} />
+                {label}
+              </span>
+            ))}
+            <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-4 bg-red-400" /> now</span>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-slate-100">
+            <DayTimeline
+              blocks={timelineBlocks}
+              currentHour={currentHour}
+              currentMinute={currentMinute}
+              onTaskClick={(task) => { openEditTaskModal(task); setActiveTab("tasks"); }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-slate-400">Tap a task block to edit it.</p>
+        </div>
+
+        {/* History */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <button onClick={() => setShowHistory((h) => !h)} className="flex w-full items-center justify-between">
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5 text-slate-500" />
+              <span className="text-base font-semibold text-slate-900">History</span>
+              {todayLog.length > 0 && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                  {todayDone.length}✓ {todaySkipped.length}✗ today
+                </span>
+              )}
+            </div>
+            {showHistory ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+          </button>
+          {showHistory && (
+            <div className="mt-4 space-y-4">
+              <div>
+                <div className="mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">Today</div>
+                {todayLog.length === 0
+                  ? <div className="text-sm text-slate-400">No activity yet today.</div>
+                  : <div className="space-y-1.5">{[...todayDone, ...todaySkipped].sort((a, b) => a.timestamp - b.timestamp).map((e) => <LogRow key={e.id} entry={e} />)}</div>}
+              </div>
+              <div>
+                <div className="mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Yesterday{yesterdayLog.length > 0 ? ` — ${yestDone.length}✓ ${yestSkipped.length}✗` : ""}
+                </div>
+                {yesterdayLog.length === 0
+                  ? <div className="text-sm text-slate-400">No activity logged yesterday.</div>
+                  : <div className="space-y-1.5">{[...yestDone, ...yestSkipped].sort((a, b) => a.timestamp - b.timestamp).map((e) => <LogRow key={e.id} entry={e} />)}</div>}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Learning insights */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <button onClick={() => setShowLearning((s) => !s)} className="flex w-full items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-slate-500" />
+              <span className="text-base font-semibold text-slate-900">What it&apos;s learned</span>
+              {learningInsights.length > 0 && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{learningInsights.length} patterns</span>
+              )}
+            </div>
+            {showLearning ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+          </button>
+          {showLearning && (
+            <div className="mt-4">
+              {learningInsights.length === 0
+                ? <p className="text-sm text-slate-400">Complete or skip at least {LEARNING_MIN_EVENTS} tasks in a context to see patterns.</p>
+                : <div className="space-y-3">
+                    {learningInsights.map((ins) => (
+                      <div key={ins.key} className="rounded-2xl border border-slate-100 p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-medium text-slate-900 capitalize">{ins.type}</div>
+                            <div className="text-xs text-slate-400 capitalize">{ins.segment} · {ins.energy} · {ins.done + ins.skipped} sessions</div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-sm font-medium ${ins.rate >= 70 ? "text-emerald-700" : ins.rate <= 40 ? "text-rose-600" : "text-slate-700"}`}>{ins.rate}%</div>
+                            <div className="text-xs text-slate-400">{ins.done}✓ {ins.skipped}✗</div>
+                          </div>
+                        </div>
+                        <div className="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                          <div className={`h-full rounded-full ${ins.rate >= 70 ? "bg-emerald-400" : ins.rate <= 40 ? "bg-rose-400" : "bg-amber-400"}`} style={{ width: `${ins.rate}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>}
+              <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-xs text-slate-400">
+                Subtle ±{LEARNING_MAX_BONUS}pt nudge. Needs ≥{LEARNING_MIN_EVENTS} events per context.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Task form (shared between modal and edit) ─────────────────────────────────
+  function TaskFormFields() {
+    return (
+      <>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">Task name</label>
+          <input ref={titleInputRef} className={inputCls} placeholder="e.g. Write essay intro"
+            value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Type</label>
+            <select className={inputCls} value={taskForm.type} onChange={(e) => setTaskForm({ ...taskForm, type: e.target.value as TaskType })}>
+              {TASK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Best time</label>
+            <select className={inputCls} value={taskForm.preferredSegment} onChange={(e) => setTaskForm({ ...taskForm, preferredSegment: e.target.value as SegmentKey })}>
+              {DAY_SEGMENTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Energy needed</label>
+            <select className={inputCls} value={taskForm.energy} onChange={(e) => setTaskForm({ ...taskForm, energy: e.target.value as EnergyLevel })}>
+              {(["low", "medium", "high"] as EnergyLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Creativity</label>
+            <select className={inputCls} value={taskForm.creativity} onChange={(e) => setTaskForm({ ...taskForm, creativity: e.target.value as CreativityLevel })}>
+              {(["low", "medium", "high"] as CreativityLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">Duration (minutes)</label>
+          <input className={inputCls} type="text" inputMode="numeric" placeholder="e.g. 45"
+            value={taskForm.duration === 0 ? "" : taskForm.duration}
+            onChange={(e) => { const r = e.target.value.replace(/[^0-9]/g, ""); setTaskForm({ ...taskForm, duration: r === "" ? 0 : Number(r) }); }} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Importance</label>
+            <select className={inputCls} value={taskForm.importance} onChange={(e) => setTaskForm({ ...taskForm, importance: Number(e.target.value) })}>
+              <option value={1}>1 — barely matters</option>
+              <option value={2}>2 — nice to do</option>
+              <option value={3}>3 — should do</option>
+              <option value={4}>4 — important</option>
+              <option value={5}>5 — critical</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Urgency</label>
+            <select className={inputCls} value={taskForm.urgency} onChange={(e) => setTaskForm({ ...taskForm, urgency: Number(e.target.value) })}>
+              <option value={1}>1 — no deadline</option>
+              <option value={2}>2 — this week</option>
+              <option value={3}>3 — in a few days</option>
+              <option value={4}>4 — tomorrow</option>
+              <option value={5}>5 — due today</option>
+            </select>
+          </div>
+        </div>
+        <button onClick={saveTask} disabled={!taskForm.title.trim()}
+          className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition">
+          <Sparkles className="mr-2 inline h-4 w-4" />
+          {editingTaskId ? "Save changes" : "Add task"}
+        </button>
+      </>
+    );
+  }
+
+  // ── Event form fields ─────────────────────────────────────────────────────────
+  function EventFormFields() {
+    return (
+      <>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">Event name</label>
+          <input className={inputCls} placeholder="e.g. Lecture"
+            value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} />
+        </div>
+        {(["Start", "End"] as const).map((label) => {
+          const isEnd = label === "End";
+          return (
+            <div key={label}>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">{label} time</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-xs text-slate-400">Hour</label>
+                  <input className={inputCls} type="number" min={6} max={isEnd ? 23 : 22}
+                    value={isEnd ? eventForm.endHour : eventForm.startHour}
+                    onChange={(e) => setEventForm({ ...eventForm, [isEnd ? "endHour" : "startHour"]: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-slate-400">Minute</label>
+                  <input className={inputCls} type="number" min={0} max={59}
+                    value={isEnd ? eventForm.endMinute : eventForm.startMinute}
+                    onChange={(e) => setEventForm({ ...eventForm, [isEnd ? "endMinute" : "startMinute"]: Number(e.target.value) })} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {eventFormError && <p className="text-xs text-red-600">{eventFormError}</p>}
+        {!eventFormError && eventForm.title.trim() && (
+          <p className="text-xs text-slate-400">{formatTime(eventForm.startHour, eventForm.startMinute)} → {formatTime(eventForm.endHour, eventForm.endMinute)}</p>
+        )}
+        <button onClick={saveEvent} disabled={!!eventFormError || !eventForm.title.trim()}
+          className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition">
+          Add event
+        </button>
+      </>
+    );
+  }
+
+  // ── Tab bar ───────────────────────────────────────────────────────────────────
+  const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
+    { key: "now",      label: "Now",      icon: <Brain className="h-5 w-5" />        },
+    { key: "tasks",    label: "My day",   icon: <CheckCircle2 className="h-5 w-5" /> },
+    { key: "timeline", label: "Timeline", icon: <CalendarDays className="h-5 w-5" /> },
+  ];
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+  return (
+    <div className="flex flex-col min-h-screen bg-slate-50">
+      {/* Content area — padded so it doesn't hide behind the tab bar */}
+      <div className="flex-1 overflow-y-auto pb-24">
+        <div className="mx-auto max-w-2xl px-4 pt-6">
+          {activeTab === "now"      && <TabNow />}
+          {activeTab === "tasks"    && <TabTasks />}
+          {activeTab === "timeline" && <TabTimeline />}
+        </div>
+      </div>
+
+      {/* Sticky bottom tab bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-2xl">
+          {TABS.map(({ key, label, icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium transition ${activeTab === key ? "text-slate-900" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              <span className={`transition ${activeTab === key ? "text-slate-900" : "text-slate-400"}`}>{icon}</span>
+              {label}
+              {activeTab === key && <span className="h-1 w-6 rounded-full bg-slate-900" />}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Modals */}
+      {showTaskModal && (
+        <Modal title={editingTaskId ? "Edit task" : "Add task"} onClose={closeTaskModal}>
+          <TaskFormFields />
+        </Modal>
+      )}
+      {showEventModal && (
+        <Modal title="Add fixed event" onClose={closeEventModal}>
+          <EventFormFields />
+        </Modal>
+      )}
     </div>
   );
 }
