@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Brain,
   CheckCircle2,
@@ -433,6 +433,7 @@ export default function DayPlannerDecidesForYou() {
     return saved.length > 0 ? saved : makeInitialEvents();
   });
 
+  const formRef = useRef<HTMLDivElement | null>(null);
  
   const [energyStateValue, setEnergyStateValue] = useState<EnergyStateValue>(() => {
   if (typeof window === "undefined") return "normal";
