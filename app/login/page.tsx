@@ -19,7 +19,7 @@ export default function LoginPage() {
       email: email.trim(),
       options: {
         // After clicking the magic link, redirect back to the app
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
