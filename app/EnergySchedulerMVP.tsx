@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Brain,
   CalendarDays,
@@ -9,6 +10,7 @@ import {
   ChevronUp,
   Clock,
   History,
+  LogOut,
   Moon,
   PlayCircle,
   Sparkles,
@@ -18,6 +20,22 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import type { User } from "@supabase/supabase-js";
+import {
+  fetchTasks,
+  upsertTask,
+  deleteTask as dbDeleteTask,
+  fetchFixedEvents,
+  insertFixedEvent,
+  deleteFixedEvent as dbDeleteFixedEvent,
+  fetchTaskLog,
+  insertLogEntry,
+  fetchLearningMap,
+  upsertLearningEntry,
+  fetchPreferences,
+  savePreferences,
+} from "../lib/db";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -647,8 +665,33 @@ function EventFormFields({ eventForm, setEventForm, eventFormError, onSave }: Ev
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DayPlannerDecidesForYou() {
+  const router        = useRouter();
   const titleInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Auth ────────────────────────────────────────────────────────────────────
+  const [user,    setUser]    = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    // Get current session on mount
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    // Listen for auth changes (magic link redirect, sign out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) router.push("/login");
+  }, [authLoading, user, router]);
+
+  // ── State (starts from localStorage, then hydrated from Supabase) ───────────
   const [tasks,          setTasks]          = useState<Task[]>(() => { const s = readStorage<Task[]>(SK_TASKS, []); return s.length > 0 ? s : makeInitialTasks(); });
   const [fixedEvents,    setFixedEvents]    = useState<FixedEvent[]>(() => { const s = readStorage<FixedEvent[]>(SK_EVENTS, []); return s.length > 0 ? s : makeInitialEvents(); });
   const [energyStateValue, setEnergyStateValue] = useState<EnergyStateValue>(() => {
@@ -661,6 +704,35 @@ export default function DayPlannerDecidesForYou() {
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>(() => readStorage<string[]>(SK_SKIPPED, []));
   const [learningMap,    setLearningMap]    = useState<LearningMap>(() => readStorage<LearningMap>(SK_LEARNING, {}));
   const [taskLog,        setTaskLog]        = useState<TaskLogEntry[]>(() => readStorage<TaskLogEntry[]>(SK_LOG, []));
+  const [dbLoading,      setDbLoading]      = useState(false);
+
+  // ── Hydrate from Supabase when user logs in ──────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    setDbLoading(true);
+
+    const yesterday = yesterdayStr();
+
+    Promise.all([
+      fetchTasks(user.id),
+      fetchFixedEvents(user.id),
+      fetchTaskLog(user.id, yesterday),
+      fetchLearningMap(user.id),
+      fetchPreferences(user.id),
+    ]).then(([dbTasks, dbEvents, dbLog, dbLearning, dbPrefs]) => {
+      if (dbTasks.length   > 0) { setTasks(dbTasks);       writeStorage(SK_TASKS,    dbTasks); }
+      if (dbEvents.length  > 0) { setFixedEvents(dbEvents); writeStorage(SK_EVENTS,   dbEvents); }
+      if (dbLog.length     > 0) { setTaskLog(dbLog);        writeStorage(SK_LOG,      dbLog); }
+      if (Object.keys(dbLearning).length > 0) { setLearningMap(dbLearning); writeStorage(SK_LEARNING, dbLearning); }
+      if (dbPrefs) {
+        setEnergyStateValue(dbPrefs.energyState);
+        setSkippedTaskIds(dbPrefs.skippedTaskIds);
+        writeStorage(SK_ENERGY,  dbPrefs.energyState);
+        writeStorage(SK_SKIPPED, dbPrefs.skippedTaskIds);
+      }
+      setDbLoading(false);
+    });
+  }, [user]);
 
   // Auto-sync clock
   useEffect(() => {
@@ -735,45 +807,85 @@ export default function DayPlannerDecidesForYou() {
   const skipped = allRanked.filter((t) => !t.done &&  skippedTaskIds.includes(t.id));
   const done    = allRanked.filter((t) => t.done);
 
-  // Persist
-  function persistTasks(next: Task[])            { setTasks(next);          writeStorage(SK_TASKS,    next); }
-  function persistEvents(next: FixedEvent[])     { setFixedEvents(next);    writeStorage(SK_EVENTS,   next); }
-  function persistEnergy(next: EnergyStateValue) { setEnergyStateValue(next); writeStorage(SK_ENERGY, next); }
-  function persistSkipped(next: string[])        { setSkippedTaskIds(next); writeStorage(SK_SKIPPED,  next); }
-  function persistLearning(next: LearningMap)    { setLearningMap(next);    writeStorage(SK_LEARNING, next); }
+  // ── Persist helpers — write to localStorage + Supabase ──────────────────────
+  function persistTasks(next: Task[], changed?: Task, deleted?: string) {
+    setTasks(next);
+    writeStorage(SK_TASKS, next);
+    if (!user) return;
+    if (deleted)  dbDeleteTask(deleted);
+    if (changed)  upsertTask(user.id, changed);
+  }
 
-  function addLogEntry(task: Task, outcome: OutcomeType) {
-    const entry: TaskLogEntry = {
-      id: crypto.randomUUID(), taskId: task.id, taskTitle: task.title, taskType: task.type,
-      taskDuration: task.duration, outcome, segment: plan.segment.key, energyState: energyStateValue,
-      timestamp: Date.now(), date: todayStr(),
-    };
-    const next = [...taskLog, entry];
-    setTaskLog(next); writeStorage(SK_LOG, next);
+  function persistEvents(next: FixedEvent[], added?: FixedEvent, deleted?: string) {
+    setFixedEvents(next);
+    writeStorage(SK_EVENTS, next);
+    if (!user) return;
+    if (deleted)  dbDeleteFixedEvent(deleted);
+    if (added)    insertFixedEvent(user.id, added);
+  }
+
+  function persistEnergy(next: EnergyStateValue) {
+    setEnergyStateValue(next);
+    writeStorage(SK_ENERGY, next);
+    if (user) savePreferences(user.id, { energyState: next, skippedTaskIds });
+  }
+
+  function persistSkipped(next: string[]) {
+    setSkippedTaskIds(next);
+    writeStorage(SK_SKIPPED, next);
+    if (user) savePreferences(user.id, { energyState: energyStateValue, skippedTaskIds: next });
+  }
+
+  function persistLearning(next: LearningMap, updatedKey?: string) {
+    setLearningMap(next);
+    writeStorage(SK_LEARNING, next);
+    if (user && updatedKey && next[updatedKey]) {
+      upsertLearningEntry(user.id, updatedKey, next[updatedKey]);
+    }
   }
 
   // Action handlers — wrapped in useCallback so TaskRow doesn't force re-renders
   const markDone = useCallback((id: string) => {
     const task = tasks.find((t) => t.id === id);
-    if (task) { addLogEntry(task, "done"); persistLearning(recordOutcome(learningMap, task.type, plan.segment.key, energyStateValue, "done")); }
+    if (task) {
+      const lKey = `${task.type}:${plan.segment.key}:${energyStateValue}`;
+      const prev = learningMap[lKey] ?? { done: 0, skipped: 0 };
+      const next = { ...learningMap, [lKey]: { ...prev, done: prev.done + 1 } };
+      persistLearning(next, lKey);
+      const entry: TaskLogEntry = { id: crypto.randomUUID(), taskId: task.id, taskTitle: task.title, taskType: task.type, taskDuration: task.duration, outcome: "done", segment: plan.segment.key, energyState: energyStateValue, timestamp: Date.now(), date: todayStr() };
+      const nextLog = [...taskLog, entry];
+      setTaskLog(nextLog); writeStorage(SK_LOG, nextLog);
+      if (user) insertLogEntry(user.id, entry);
+    }
     if (timer.activeTaskId === id) timer.stopTimer();
-    persistTasks(tasks.map((t) => t.id === id ? { ...t, done: true } : t));
+    const updated = tasks.map((t) => t.id === id ? { ...t, done: true } : t);
+    const changedTask = updated.find((t) => t.id === id);
+    persistTasks(updated, changedTask);
     persistSkipped(skippedTaskIds.filter((s) => s !== id));
-  }, [tasks, skippedTaskIds, learningMap, energyStateValue, plan.segment.key, timer]); // eslint-disable-line
+  }, [tasks, skippedTaskIds, learningMap, energyStateValue, plan.segment.key, timer, taskLog, user]); // eslint-disable-line
 
   const skipTask = useCallback((id: string) => {
     const task = tasks.find((t) => t.id === id);
-    if (task) { addLogEntry(task, "skipped"); persistLearning(recordOutcome(learningMap, task.type, plan.segment.key, energyStateValue, "skipped")); }
+    if (task) {
+      const lKey = `${task.type}:${plan.segment.key}:${energyStateValue}`;
+      const prev = learningMap[lKey] ?? { done: 0, skipped: 0 };
+      const next = { ...learningMap, [lKey]: { ...prev, skipped: prev.skipped + 1 } };
+      persistLearning(next, lKey);
+      const entry: TaskLogEntry = { id: crypto.randomUUID(), taskId: task.id, taskTitle: task.title, taskType: task.type, taskDuration: task.duration, outcome: "skipped", segment: plan.segment.key, energyState: energyStateValue, timestamp: Date.now(), date: todayStr() };
+      const nextLog = [...taskLog, entry];
+      setTaskLog(nextLog); writeStorage(SK_LOG, nextLog);
+      if (user) insertLogEntry(user.id, entry);
+    }
     if (timer.activeTaskId === id) timer.stopTimer();
     persistSkipped(skippedTaskIds.includes(id) ? skippedTaskIds : [...skippedTaskIds, id]);
-  }, [tasks, skippedTaskIds, learningMap, energyStateValue, plan.segment.key, timer]); // eslint-disable-line
+  }, [tasks, skippedTaskIds, learningMap, energyStateValue, plan.segment.key, timer, taskLog, user]); // eslint-disable-line
 
   const unskipTask   = useCallback((id: string) => persistSkipped(skippedTaskIds.filter((s) => s !== id)), [skippedTaskIds]); // eslint-disable-line
   const unskipAll    = useCallback(() => persistSkipped([]), []); // eslint-disable-line
 
   const deleteTask = useCallback((id: string) => {
     if (timer.activeTaskId === id) timer.stopTimer();
-    persistTasks(tasks.filter((t) => t.id !== id));
+    persistTasks(tasks.filter((t) => t.id !== id), undefined, id);
     persistSkipped(skippedTaskIds.filter((s) => s !== id));
     if (editingTaskId === id) closeTaskModal();
   }, [tasks, skippedTaskIds, timer, editingTaskId]); // eslint-disable-line
@@ -783,7 +895,13 @@ export default function DayPlannerDecidesForYou() {
   }, [timer]);
 
   function handleEnergyChange(val: EnergyStateValue) { persistEnergy(val); setQuickMode(val === "tired"); }
-  function resetDay() { persistTasks(tasks.map((t) => ({ ...t, done: false }))); persistSkipped([]); timer.stopTimer(); }
+  function resetDay() {
+    const reset = tasks.map((t) => ({ ...t, done: false }));
+    // upsert all tasks as not-done
+    setTasks(reset); writeStorage(SK_TASKS, reset);
+    if (user) reset.forEach((t) => upsertTask(user.id, t));
+    persistSkipped([]); timer.stopTimer();
+  }
 
   function openAddTaskModal()  { setEditingTaskId(null); setTaskForm(emptyTaskForm); setShowTaskModal(true); setTimeout(() => titleInputRef.current?.focus(), 100); }
   function openEditTaskModal(task: Task) {
@@ -797,9 +915,12 @@ export default function DayPlannerDecidesForYou() {
   function saveTask() {
     if (!taskForm.title.trim()) return;
     if (editingTaskId) {
-      persistTasks(tasks.map((t) => t.id === editingTaskId ? { ...t, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration) } : t));
+      const updated = tasks.map((t) => t.id === editingTaskId ? { ...t, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration) } : t);
+      const changed = updated.find((t) => t.id === editingTaskId);
+      persistTasks(updated, changed);
     } else {
-      persistTasks([...tasks, { id: crypto.randomUUID(), done: false, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration) }]);
+      const newTask: Task = { id: crypto.randomUUID(), done: false, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration) };
+      persistTasks([...tasks, newTask], newTask);
     }
     closeTaskModal();
   }
@@ -808,10 +929,11 @@ export default function DayPlannerDecidesForYou() {
   function closeEventModal()   { setShowEventModal(false); setEventForm(emptyEventForm); }
   function saveEvent() {
     if (!eventForm.title.trim() || eventFormError) return;
-    persistEvents([...fixedEvents, { id: crypto.randomUUID(), ...eventForm }]);
+    const newEvent: FixedEvent = { id: crypto.randomUUID(), ...eventForm };
+    persistEvents([...fixedEvents, newEvent], newEvent);
     closeEventModal();
   }
-  function deleteFixedEvent(id: string) { persistEvents(fixedEvents.filter((e) => e.id !== id)); }
+  function deleteFixedEvent(id: string) { persistEvents(fixedEvents.filter((e) => e.id !== id), undefined, id); }
 
   // ── Task row — uses stable callbacks from above ────────────────────────────
   function TaskRow({ task, index }: { task: RankedTask; index: number }) {
@@ -942,6 +1064,21 @@ export default function DayPlannerDecidesForYou() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
+  // Show spinner while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-2xl bg-[#F5CF82] animate-pulse" />
+          <p className="text-sm text-[#B8CCFA]">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect handled by useEffect — show nothing while navigating
+  if (!user) return null;
+
   const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: "now",      label: "Now",      icon: <Brain className="h-5 w-5" />        },
     { key: "tasks",    label: "My day",   icon: <CheckCircle2 className="h-5 w-5" /> },
@@ -952,6 +1089,19 @@ export default function DayPlannerDecidesForYou() {
     <div className="flex flex-col min-h-screen bg-white">
       <div className="flex-1 overflow-y-auto pb-24">
         <div className="mx-auto max-w-2xl px-4 pt-5">
+
+          {/* ── Sync indicator + sign out ── */}
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-[#B8CCFA]">
+              {dbLoading ? "Syncing…" : `Signed in as ${user.email}`}
+            </span>
+            <button
+              onClick={async () => { await supabase.auth.signOut(); router.push("/login"); }}
+              className="flex items-center gap-1.5 rounded-xl bg-[#FFFBF0] px-3 py-1.5 text-xs text-[#7A6050] hover:bg-[#FFF5D6] min-h-[36px]"
+            >
+              <LogOut className="h-3.5 w-3.5" /> Sign out
+            </button>
+          </div>
 
           {/* ── Now tab ── */}
           {activeTab === "now" && (
