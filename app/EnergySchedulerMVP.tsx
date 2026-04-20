@@ -35,7 +35,7 @@ import {
   upsertLearningEntry,
   fetchPreferences,
   savePreferences,
-} from "../lib/db";
+} from "./lib/db";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
