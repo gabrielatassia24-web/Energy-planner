@@ -13,17 +13,18 @@ function LoginForm() {
   const [error,   setError]   = useState<string | null>(null);
 
   useEffect(() => {
-    const code = searchParams.get("code");
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (!error) {
-          router.push("/");
-        } else {
-          setError("Login link expired. Please request a new one.");
-        }
-      });
-    }
-  }, [searchParams, router]);
+  const code = searchParams.get("code");
+  const type = searchParams.get("type");
+  if (code && type === "magiclink") {
+    supabase.auth.verifyOtp({ 
+      token_hash: code, 
+      type: "magiclink" 
+    }).then(({ error }) => {
+      if (!error) router.push("/");
+      else setError("Link expired. Request a new one.");
+    });
+  }
+}, [searchParams, router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
