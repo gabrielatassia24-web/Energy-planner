@@ -291,28 +291,28 @@ const emptyEventForm: EventForm = { title: "", startHour: 9, startMinute: 0, end
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 // FIX: py-3 text-base → ~48px height, number pad on mobile
-const inputCls = "w-full rounded-xl border border-[#F5CF82] bg-white px-3 py-3 text-base outline-none transition focus:border-[#82A8F5]";
-const cardCls  = "rounded-3xl border border-[#F5CF82] bg-white p-4 shadow-sm";
+const inputCls = "w-full rounded-xl border border-[#E8D0B8] bg-[#FDF6EE] px-3 py-3 text-base outline-none transition focus:border-[#C85A2A]";
+const cardCls  = "rounded-3xl border border-[#E8D0B8] bg-[#FDF6EE] p-4 shadow-sm";
 
 function btnCls(kind: "primary" | "secondary" | "ghost" = "primary"): string {
-  if (kind === "secondary") return "inline-flex items-center justify-center min-h-[44px] rounded-2xl border border-[#F5CF82] bg-white px-4 py-2 text-sm font-medium text-[#3D2B1F] transition hover:bg-[#FFFBF0]";
-  if (kind === "ghost")     return "inline-flex items-center justify-center min-h-[44px] rounded-2xl bg-[#FFFBF0] px-4 py-2 text-sm font-medium text-[#3D2B1F] transition hover:bg-[#FFF5D6]";
-  return "inline-flex items-center justify-center min-h-[44px] rounded-2xl bg-[#F5CF82] px-4 py-2 text-sm font-medium text-[#3D2B1F] transition hover:bg-[#E8BB60]";
+  if (kind === "secondary") return "inline-flex items-center justify-center min-h-[44px] rounded-2xl border border-[#E8D0B8] bg-[#FDF6EE] px-4 py-2 text-sm font-medium text-[#3D1A08] transition hover:bg-[#F5E6D3]";
+  if (kind === "ghost")     return "inline-flex items-center justify-center min-h-[44px] rounded-2xl bg-[#F5E6D3] px-4 py-2 text-sm font-medium text-[#3D1A08] transition hover:bg-[#EDD8C0]";
+  return "inline-flex items-center justify-center min-h-[44px] rounded-2xl bg-[#E8A87C] px-4 py-2 text-sm font-medium text-[#3D1A08] transition hover:bg-[#D4946A]";
 }
 
 function pillCls(active: boolean): string {
   return active
-    ? "rounded-2xl border border-[#F5CF82] bg-[#F5CF82] px-4 py-3 text-left text-[#3D2B1F] min-h-[52px] w-full"
-    : "rounded-2xl border border-[#F5CF82] bg-white px-4 py-3 text-left text-[#3D2B1F] hover:bg-[#FFFBF0] min-h-[52px] w-full";
+    ? "rounded-2xl border border-[#D4946A] bg-[#E8A87C] px-4 py-3 text-left text-[#3D1A08] min-h-[52px] w-full"
+    : "rounded-2xl border border-[#E8D0B8] bg-[#FDF6EE] px-4 py-3 text-left text-[#3D1A08] hover:bg-[#F5E6D3] min-h-[52px] w-full";
 }
 
 function taskTypeColor(type: TaskType): { bg: string; border: string; text: string } {
   switch (type) {
-    case "deep work":  return { bg: "bg-[#ED98C3]", border: "border-[#D870A8]", text: "text-[#3D2B1F]" };
-    case "physical":   return { bg: "bg-[#ED9898]", border: "border-[#D86868]", text: "text-[#3D2B1F]" };
-    case "life admin": return { bg: "bg-[#EDC398]", border: "border-[#D8A068]", text: "text-[#3D2B1F]" };
-    case "chore":      return { bg: "bg-[#F9E5AB]", border: "border-[#E8C860]", text: "text-[#3D2B1F]" };
-    case "recovery":   return { bg: "bg-[#DBED9D]", border: "border-[#A8D860]", text: "text-[#3D2B1F]" };
+    case "deep work":  return { bg: "bg-[#F5E6D3]", border: "border-[#D4946A]", text: "text-[#3D1A08]" };
+    case "physical":   return { bg: "bg-[#D6EAD8]", border: "border-[#8BBF90]", text: "text-[#3D1A08]" };
+    case "life admin": return { bg: "bg-[#FDDDD0]", border: "border-[#E8A87C]", text: "text-[#3D1A08]" };
+    case "chore":      return { bg: "bg-[#F5E6D3]", border: "border-[#C8A87C]", text: "text-[#3D1A08]" };
+    case "recovery":   return { bg: "bg-[#E8F0D8]", border: "border-[#A8C880]", text: "text-[#3D1A08]" };
   }
 }
 
@@ -335,10 +335,10 @@ const TIMELINE_END   = 23 * 60;
 const PX_PER_MIN     = 1.4;
 
 const SEGMENT_BANDS = [
-  { startMin: 6*60,  endMin: 11*60, color: "bg-[#FFFBF0]", label: "Morning"   },
-  { startMin: 11*60, endMin: 15*60, color: "bg-[#F0F4FF]", label: "Midday"    },
-  { startMin: 15*60, endMin: 18*60, color: "bg-[#FFFBF0]", label: "Afternoon" },
-  { startMin: 18*60, endMin: 23*60, color: "bg-[#F0F4FF]", label: "Evening"   },
+  { startMin: 6*60,  endMin: 11*60, color: "bg-[#F5E6D3]", label: "Morning"   },
+  { startMin: 11*60, endMin: 15*60, color: "bg-[#EDDCCA]", label: "Midday"    },
+  { startMin: 15*60, endMin: 18*60, color: "bg-[#F5E6D3]", label: "Afternoon" },
+  { startMin: 18*60, endMin: 23*60, color: "bg-[#EDDCCA]", label: "Evening"   },
 ];
 
 function buildTimeline(
@@ -434,13 +434,13 @@ function DayTimeline({ blocks, currentHour, currentMinute, onTaskClick }: DayTim
       {SEGMENT_BANDS.map((band) => (
         <div key={band.label} className={`absolute left-10 right-0 ${band.color}`}
           style={{ top: `${minToPx(band.startMin)}px`, height: `${(band.endMin - band.startMin) * PX_PER_MIN}px` }}>
-          <span className="absolute right-2 top-1 text-[10px] font-medium text-[#B8CCFA] uppercase tracking-wider">{band.label}</span>
+          <span className="absolute right-2 top-1 text-[10px] font-medium text-[#C8A87C] uppercase tracking-wider">{band.label}</span>
         </div>
       ))}
       {hourLabels.map((h) => (
         <div key={h} className="absolute left-0 right-0 flex items-center" style={{ top: `${minToPx(h * 60)}px` }}>
-          <span className="w-9 shrink-0 text-right text-[10px] text-[#B8CCFA] pr-1 leading-none">{String(h).padStart(2, "0")}</span>
-          <div className="flex-1 border-t border-[#F5CF82]" />
+          <span className="w-9 shrink-0 text-right text-[10px] text-[#C8A87C] pr-1 leading-none">{String(h).padStart(2, "0")}</span>
+          <div className="flex-1 border-t border-[#E8D0B8]" />
         </div>
       ))}
       {blocks.map((block) => {
@@ -448,11 +448,11 @@ function DayTimeline({ blocks, currentHour, currentMinute, onTaskClick }: DayTim
         const height = blockH(block);
         if (block.kind === "event") {
           return (
-            <div key={block.id} className="absolute left-10 right-2 rounded-lg bg-[#F5CF82] border border-[#E8BB60] px-2 flex items-center overflow-hidden"
+            <div key={block.id} className="absolute left-10 right-2 rounded-lg bg-[#E8D0B8] border border-[#D4946A] px-2 flex items-center overflow-hidden"
               style={{ top: `${top}px`, height: `${height}px` }}>
               <div className="min-w-0">
-                <div className="text-xs font-medium text-[#3D2B1F] truncate">{block.title}</div>
-                {height > 28 && <div className="text-[10px] text-[#7A6050] truncate">{formatTime(Math.floor(block.startMin/60), block.startMin%60)}–{formatTime(Math.floor(block.endMin/60), block.endMin%60)}</div>}
+                <div className="text-xs font-medium text-[#3D1A08] truncate">{block.title}</div>
+                {height > 28 && <div className="text-[10px] text-[#7A4A2A] truncate">{formatTime(Math.floor(block.startMin/60), block.startMin%60)}–{formatTime(Math.floor(block.endMin/60), block.endMin%60)}</div>}
               </div>
             </div>
           );
@@ -464,16 +464,16 @@ function DayTimeline({ blocks, currentHour, currentMinute, onTaskClick }: DayTim
           return (
             <button key={block.id} onClick={() => !isDone && onTaskClick(task)}
               className={`absolute left-10 right-2 rounded-lg border px-2 text-left overflow-hidden transition ${
-                isDone    ? "opacity-40 cursor-default bg-white border-[#F5CF82]"
-                : isSkipped ? "opacity-50 cursor-default bg-white border-dashed border-[#E8BB60]"
+                isDone    ? "opacity-40 cursor-default bg-[#FDF6EE] border-[#E8D0B8]"
+                : isSkipped ? "opacity-50 cursor-default bg-[#FDF6EE] border-dashed border-[#D4946A]"
                 : `${colors.bg} ${colors.border} hover:opacity-90 cursor-pointer`}`}
               style={{ top: `${top}px`, height: `${height}px` }}>
               <div className="flex items-start h-full py-1">
                 <div className="min-w-0 flex-1">
-                  <div className={`text-xs font-medium truncate ${isDone || isSkipped ? "text-[#B8CCFA]" : colors.text} ${isDone ? "line-through" : ""}`}>{task.title}</div>
-                  {height > 30 && <div className={`text-[10px] truncate ${isDone || isSkipped ? "text-[#B8CCFA]" : colors.text} opacity-70`}>{task.duration} min</div>}
+                  <div className={`text-xs font-medium truncate ${isDone || isSkipped ? "text-[#C8A87C]" : colors.text} ${isDone ? "line-through" : ""}`}>{task.title}</div>
+                  {height > 30 && <div className={`text-[10px] truncate ${isDone || isSkipped ? "text-[#C8A87C]" : colors.text} opacity-70`}>{task.duration} min</div>}
                 </div>
-                {isDone && <CheckCircle2 className="h-3 w-3 text-[#82A8F5] shrink-0 mt-0.5" />}
+                {isDone && <CheckCircle2 className="h-3 w-3 text-[#C85A2A] shrink-0 mt-0.5" />}
               </div>
             </button>
           );
@@ -482,9 +482,9 @@ function DayTimeline({ blocks, currentHour, currentMinute, onTaskClick }: DayTim
       })}
       {nowMin >= TIMELINE_START && nowMin <= TIMELINE_END && (
         <div className="absolute left-0 right-0 flex items-center pointer-events-none z-10" style={{ top: `${nowPx}px` }}>
-          <div className="w-9 flex justify-end pr-1"><div className="h-2 w-2 rounded-full bg-[#82A8F5]" /></div>
-          <div className="flex-1 border-t-2 border-[#82A8F5]" />
-          <span className="absolute left-10 -top-4 text-[10px] font-semibold text-[#4070CC] bg-white px-1 rounded">{formatTime(currentHour, currentMinute)}</span>
+          <div className="w-9 flex justify-end pr-1"><div className="h-2 w-2 rounded-full bg-[#C85A2A]" /></div>
+          <div className="flex-1 border-t-2 border-[#C85A2A]" />
+          <span className="absolute left-10 -top-4 text-[10px] font-semibold text-[#C85A2A] bg-[#FDF6EE] px-1 rounded">{formatTime(currentHour, currentMinute)}</span>
         </div>
       )}
     </div>
@@ -507,10 +507,10 @@ function Modal({ title, onClose, children }: ModalProps) {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[#FFF5D6] px-6 py-4">
-          <h2 className="text-base font-semibold text-[#3D2B1F]">{title}</h2>
-          <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-[#FFFBF0] text-sm font-medium text-[#7A6050] hover:bg-[#FFF5D6] px-3">
+      <div className="relative z-10 w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-[#FDF6EE] shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[#EDD8C0] px-6 py-4">
+          <h2 className="text-base font-semibold text-[#3D1A08]">{title}</h2>
+          <button onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-[#F5E6D3] text-sm font-medium text-[#7A4A2A] hover:bg-[#EDD8C0] px-3">
             Close
           </button>
         </div>
@@ -534,7 +534,7 @@ function TaskFormFields({ taskForm, setTaskForm, editingTaskId, onSave, titleRef
   return (
     <>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">Task name</label>
+        <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Task name</label>
         <input ref={titleRef} className={inputCls} placeholder="e.g. Write essay intro"
           value={taskForm.title}
           autoComplete="off" autoCorrect="off" autoCapitalize="sentences" spellCheck={false}
@@ -542,13 +542,13 @@ function TaskFormFields({ taskForm, setTaskForm, editingTaskId, onSave, titleRef
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">Type</label>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Type</label>
           <select className={inputCls} value={taskForm.type} onChange={(e) => setTaskForm((f) => ({ ...f, type: e.target.value as TaskType }))}>
             {TASK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">Best time</label>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Best time</label>
           <select className={inputCls} value={taskForm.preferredSegment} onChange={(e) => setTaskForm((f) => ({ ...f, preferredSegment: e.target.value as SegmentKey }))}>
             {DAY_SEGMENTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
           </select>
@@ -556,27 +556,27 @@ function TaskFormFields({ taskForm, setTaskForm, editingTaskId, onSave, titleRef
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">Energy needed</label>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Energy needed</label>
           <select className={inputCls} value={taskForm.energy} onChange={(e) => setTaskForm((f) => ({ ...f, energy: e.target.value as EnergyLevel }))}>
             {(["low", "medium", "high"] as EnergyLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">Creativity</label>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Creativity</label>
           <select className={inputCls} value={taskForm.creativity} onChange={(e) => setTaskForm((f) => ({ ...f, creativity: e.target.value as CreativityLevel }))}>
             {(["low", "medium", "high"] as CreativityLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
         </div>
       </div>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">Duration (minutes)</label>
+        <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Duration (minutes)</label>
         <input className={inputCls} type="text" inputMode="numeric" placeholder="e.g. 45"
           value={taskForm.duration === 0 ? "" : taskForm.duration}
           onChange={(e) => { const r = e.target.value.replace(/[^0-9]/g, ""); setTaskForm((f) => ({ ...f, duration: r === "" ? 0 : Number(r) })); }} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">Importance</label>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Importance</label>
           <select className={inputCls} value={taskForm.importance} onChange={(e) => setTaskForm((f) => ({ ...f, importance: Number(e.target.value) }))}>
             <option value={1}>1 — barely matters</option>
             <option value={2}>2 — nice to do</option>
@@ -586,7 +586,7 @@ function TaskFormFields({ taskForm, setTaskForm, editingTaskId, onSave, titleRef
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">Urgency</label>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Urgency</label>
           <select className={inputCls} value={taskForm.urgency} onChange={(e) => setTaskForm((f) => ({ ...f, urgency: Number(e.target.value) }))}>
             <option value={1}>1 — no deadline</option>
             <option value={2}>2 — this week</option>
@@ -597,7 +597,7 @@ function TaskFormFields({ taskForm, setTaskForm, editingTaskId, onSave, titleRef
         </div>
       </div>
       <button onClick={onSave} disabled={!taskForm.title.trim()}
-        className="w-full min-h-[48px] rounded-2xl bg-[#F5CF82] px-4 text-base font-medium text-[#3D2B1F] hover:bg-[#E8BB60] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2">
+        className="w-full min-h-[48px] rounded-2xl bg-[#E8D0B8] px-4 text-base font-medium text-[#3D1A08] hover:bg-[#D4946A] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2">
         <Sparkles className="h-4 w-4" />
         {editingTaskId ? "Save changes" : "Add task"}
       </button>
@@ -616,7 +616,7 @@ function EventFormFields({ eventForm, setEventForm, eventFormError, onSave }: Ev
   return (
     <>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">Event name</label>
+        <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Event name</label>
         <input className={inputCls} placeholder="e.g. Lecture"
           value={eventForm.title}
           autoComplete="off" autoCorrect="off" spellCheck={false}
@@ -626,10 +626,10 @@ function EventFormFields({ eventForm, setEventForm, eventFormError, onSave }: Ev
         const isEnd = label === "End";
         return (
           <div key={label}>
-            <label className="mb-1.5 block text-sm font-medium text-[#7A6050]">{label} time</label>
+            <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">{label} time</label>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="mb-1 block text-xs text-[#B8CCFA]">Hour (0–23)</label>
+                <label className="mb-1 block text-xs text-[#C8A87C]">Hour (0–23)</label>
                 <input className={inputCls} type="text" inputMode="numeric"
                   value={isEnd ? eventForm.endHour : eventForm.startHour}
                   onChange={(e) => {
@@ -638,7 +638,7 @@ function EventFormFields({ eventForm, setEventForm, eventFormError, onSave }: Ev
                   }} />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-[#B8CCFA]">Minute (0–59)</label>
+                <label className="mb-1 block text-xs text-[#C8A87C]">Minute (0–59)</label>
                 <input className={inputCls} type="text" inputMode="numeric"
                   value={isEnd ? eventForm.endMinute : eventForm.startMinute}
                   onChange={(e) => {
@@ -652,10 +652,10 @@ function EventFormFields({ eventForm, setEventForm, eventFormError, onSave }: Ev
       })}
       {eventFormError && <p className="text-sm text-red-500">{eventFormError}</p>}
       {!eventFormError && eventForm.title.trim() && (
-        <p className="text-sm text-[#B8CCFA]">{formatTime(eventForm.startHour, eventForm.startMinute)} → {formatTime(eventForm.endHour, eventForm.endMinute)}</p>
+        <p className="text-sm text-[#C8A87C]">{formatTime(eventForm.startHour, eventForm.startMinute)} → {formatTime(eventForm.endHour, eventForm.endMinute)}</p>
       )}
       <button onClick={onSave} disabled={!!eventFormError || !eventForm.title.trim()}
-        className="w-full min-h-[48px] rounded-2xl bg-[#F5CF82] px-4 text-base font-medium text-[#3D2B1F] hover:bg-[#E8BB60] disabled:opacity-40 disabled:cursor-not-allowed transition">
+        className="w-full min-h-[48px] rounded-2xl bg-[#E8D0B8] px-4 text-base font-medium text-[#3D1A08] hover:bg-[#D4946A] disabled:opacity-40 disabled:cursor-not-allowed transition">
         Add event
       </button>
     </>
@@ -944,40 +944,40 @@ export default function DayPlannerDecidesForYou() {
 
     return (
       <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 transition ${
-        isDone ? "opacity-50 border-[#FFF5D6]" : isSkipped ? "opacity-50 border-dashed border-[#F5CF82]" : "border-[#F5CF82]"}`}>
-        <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium ${isDone ? "bg-[#EEF3FE] text-[#3D2B1F]" : "bg-[#F5CF82] text-[#3D2B1F]"}`}>
+        isDone ? "opacity-50 border-[#EDD8C0]" : isSkipped ? "opacity-50 border-dashed border-[#E8D0B8]" : "border-[#E8D0B8]"}`}>
+        <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium ${isDone ? "bg-[#F5E6D3] text-[#3D1A08]" : "bg-[#E8D0B8] text-[#3D1A08]"}`}>
           {isDone ? "✓" : index + 1}
         </span>
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium truncate ${isDone ? "line-through text-[#B8CCFA]" : "text-[#3D2B1F]"}`}>{task.title}</div>
+          <div className={`text-sm font-medium truncate ${isDone ? "line-through text-[#C8A87C]" : "text-[#3D1A08]"}`}>{task.title}</div>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className={`text-[10px] rounded-full px-1.5 py-0.5 border ${colors.bg} ${colors.border} ${colors.text}`}>{task.type}</span>
-            <span className="text-[10px] text-[#B8CCFA]">{task.duration} min</span>
-            {isActive && <span className="text-[10px] text-[#3D2B1F] font-medium">{timer.formatElapsed()}</span>}
+            <span className="text-[10px] text-[#C8A87C]">{task.duration} min</span>
+            {isActive && <span className="text-[10px] text-[#3D1A08] font-medium">{timer.formatElapsed()}</span>}
           </div>
         </div>
         {/* FIX: all buttons 44×44px */}
         <div className="flex items-center gap-1 shrink-0">
           {!isDone && (
-            <button onClick={() => markDone(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#DBED9D] text-[#3D2B1F] hover:opacity-80">
+            <button onClick={() => markDone(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#C8DEC8] border border-[#B8D4BA] text-[#1A3D1E] hover:opacity-80" style={{boxShadow: '0 3px 0 #8FAF90'}}>
               <CheckCircle2 className="h-5 w-5" />
             </button>
           )}
           {!isDone && !isSkipped && (
-            <button onClick={() => handleStartTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFFBF0] text-[#7A6050] hover:bg-[#FFF5D6]">
+            <button onClick={() => handleStartTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#7A4A2A] hover:bg-[#EDD8C0]" style={{boxShadow: '0 3px 0 #C8B098'}}>
               {isActive ? <Timer className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
             </button>
           )}
           {!isDone && isSkipped && (
-            <button onClick={() => unskipTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFFBF0] text-[#3D2B1F] text-base hover:bg-[#FFF5D6]">↩</button>
+            <button onClick={() => unskipTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#3D1A08] text-base hover:bg-[#EDD8C0]" style={{boxShadow: '0 3px 0 #C8B098'}}>↩</button>
           )}
           {!isDone && !isSkipped && (
-            <button onClick={() => skipTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFFBF0] text-[#7A6050] hover:bg-[#FFF5D6] text-base font-medium">—</button>
+            <button onClick={() => skipTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#7A4A2A] hover:bg-[#EDD8C0] text-base font-medium" style={{boxShadow: '0 3px 0 #C8B098'}}>—</button>
           )}
-          <button onClick={() => openEditTaskModal(task)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFFBF0] text-[#7A6050] hover:bg-[#FFF5D6]">
+          <button onClick={() => openEditTaskModal(task)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#7A4A2A] hover:bg-[#EDD8C0]" style={{boxShadow: '0 3px 0 #C8B098'}}>
             <Sparkles className="h-5 w-5" />
           </button>
-          <button onClick={() => deleteTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFE8E0] text-[#D86868] hover:opacity-80">
+          <button onClick={() => deleteTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5C4B0] border border-[#E8A888] text-[#3D1A08] hover:opacity-80" style={{boxShadow: '0 3px 0 #C87858'}}>
             <Trash2 className="h-5 w-5" />
           </button>
         </div>
@@ -987,12 +987,12 @@ export default function DayPlannerDecidesForYou() {
 
   function EventRow({ event }: { event: FixedEvent }) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-[#F5CF82] bg-[#F5CF82] px-4 py-3 min-h-[56px]">
+      <div className="flex items-center gap-3 rounded-2xl border border-[#E8D0B8] bg-[#E8D0B8] px-4 py-3 min-h-[56px]">
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-[#3D2B1F] truncate">{event.title}</div>
-          <div className="text-xs text-[#7A6050] mt-0.5">{formatTime(event.startHour, event.startMinute)} – {formatTime(event.endHour, event.endMinute)}</div>
+          <div className="text-sm font-medium text-[#3D1A08] truncate">{event.title}</div>
+          <div className="text-xs text-[#7A4A2A] mt-0.5">{formatTime(event.startHour, event.startMinute)} – {formatTime(event.endHour, event.endMinute)}</div>
         </div>
-        <button onClick={() => deleteFixedEvent(event.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/50 text-[#7A6050] hover:bg-white/80">
+        <button onClick={() => deleteFixedEvent(event.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FDF6EE]/50 text-[#7A4A2A] hover:bg-[#FDF6EE]/80">
           <Trash2 className="h-5 w-5" />
         </button>
       </div>
@@ -1002,9 +1002,9 @@ export default function DayPlannerDecidesForYou() {
   function LogRow({ entry }: { entry: TaskLogEntry }) {
     const done = entry.outcome === "done";
     return (
-      <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${done ? "bg-[#FFF5D6] text-[#3D2B1F]" : "bg-[#FFFBF0] text-[#7A6050]"}`}>
+      <div className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm ${done ? "bg-[#EDD8C0] text-[#3D1A08]" : "bg-[#F5E6D3] text-[#7A4A2A]"}`}>
         <div className="flex items-center gap-2 min-w-0">
-          {done ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <span className="text-[#B8CCFA] shrink-0">—</span>}
+          {done ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <span className="text-[#C8A87C] shrink-0">—</span>}
           <span className={`truncate ${!done ? "line-through" : ""}`}>{entry.taskTitle}</span>
           <span className="text-xs opacity-50 shrink-0">{entry.taskDuration} min</span>
         </div>
@@ -1015,49 +1015,49 @@ export default function DayPlannerDecidesForYou() {
 
   // ── "Do this now" card ────────────────────────────────────────────────────────
   const nowCard = plan.currentEvent ? (
-    <div className="rounded-3xl border border-[#E8BB60] bg-[#F5CF82] px-5 py-4 shadow-sm">
-      <div className="text-xs text-[#3D2B1F]/50 uppercase tracking-wide mb-1">Fixed event now</div>
-      <div className="text-xl font-semibold text-[#3D2B1F]">{plan.currentEvent.title}</div>
-      <div className="text-sm text-[#7A6050] mt-0.5">
+    <div className="rounded-3xl border border-[#D4946A] bg-[#E8D0B8] px-5 py-4 shadow-sm">
+      <div className="text-xs text-[#3D1A08]/50 uppercase tracking-wide mb-1">Fixed event now</div>
+      <div className="text-xl font-semibold text-[#3D1A08]">{plan.currentEvent.title}</div>
+      <div className="text-sm text-[#7A4A2A] mt-0.5">
         {formatTime(plan.currentEvent.startHour, plan.currentEvent.startMinute)} – {formatTime(plan.currentEvent.endHour, plan.currentEvent.endMinute)}
       </div>
     </div>
   ) : plan.nowTask ? (
-    <div className="rounded-3xl border border-[#E8BB60] bg-[#F5CF82] px-5 py-4 shadow-sm">
-      <div className="flex items-center gap-1.5 text-xs text-[#3D2B1F]/50 mb-1">
+    <div className="rounded-3xl border border-[#D4946A] bg-[#E8D0B8] px-5 py-4 shadow-sm">
+      <div className="flex items-center gap-1.5 text-xs text-[#3D1A08]/50 mb-1">
         <Brain className="h-3.5 w-3.5" /> Do this now
-        {quickMode && <span className="ml-auto rounded-full bg-[#82A8F5]/20 px-2 py-0.5 text-[#2A50A0]"><Clock className="mr-1 inline h-3 w-3" />Quick</span>}
+        {quickMode && <span className="ml-auto rounded-full bg-[#C85A2A]/20 px-2 py-0.5 text-[#7A2A08]"><Clock className="mr-1 inline h-3 w-3" />Quick</span>}
       </div>
-      <div className="text-xl font-semibold text-[#3D2B1F] leading-tight">{plan.nowTask.title}</div>
+      <div className="text-xl font-semibold text-[#3D1A08] leading-tight">{plan.nowTask.title}</div>
       <div className="flex flex-wrap gap-1.5 mt-2">
-        <span className="rounded-full bg-white/40 px-2 py-0.5 text-xs text-[#3D2B1F]">{plan.nowTask.duration} min</span>
-        <span className="rounded-full bg-white/40 px-2 py-0.5 text-xs text-[#3D2B1F]">{plan.nowTask.type}</span>
+        <span className="rounded-full bg-[#FDF6EE]/40 px-2 py-0.5 text-xs text-[#3D1A08]">{plan.nowTask.duration} min</span>
+        <span className="rounded-full bg-[#FDF6EE]/40 px-2 py-0.5 text-xs text-[#3D1A08]">{plan.nowTask.type}</span>
         {plan.nowTask.learningBonus !== 0 && (
-          <span className="rounded-full bg-[#82A8F5]/25 px-2 py-0.5 text-xs text-[#2A50A0]">
+          <span className="rounded-full bg-[#C85A2A]/25 px-2 py-0.5 text-xs text-[#7A2A08]">
             <TrendingUp className="mr-1 inline h-3 w-3" />{plan.nowTask.learningBonus > 0 ? `+${plan.nowTask.learningBonus}` : plan.nowTask.learningBonus}
           </span>
         )}
         {timer.activeTaskId === plan.nowTask.id && (
-          <span className="rounded-full bg-[#82A8F5]/25 px-2 py-0.5 text-xs text-[#2A50A0]">
+          <span className="rounded-full bg-[#C85A2A]/25 px-2 py-0.5 text-xs text-[#7A2A08]">
             <Timer className="mr-1 inline h-3 w-3" />{timer.formatElapsed()}
           </span>
         )}
       </div>
       <div className="flex gap-2 mt-3">
         <button onClick={() => plan.nowTask && markDone(plan.nowTask.id)}
-          className="flex-1 min-h-[44px] rounded-2xl bg-white px-3 text-sm font-medium text-[#3D2B1F] hover:bg-[#FFFBF0] flex items-center justify-center gap-1.5">
-          <CheckCircle2 className="h-4 w-4 text-[#82A8F5]" /> Done
+          className="flex-1 min-h-[44px] rounded-2xl bg-[#FDF6EE] px-3 text-sm font-medium text-[#3D1A08] hover:bg-[#F5E6D3] flex items-center justify-center gap-1.5">
+          <CheckCircle2 className="h-4 w-4 text-[#C85A2A]" /> Done
         </button>
         <button onClick={() => plan.nowTask && skipTask(plan.nowTask.id)}
-          className="min-h-[44px] rounded-2xl bg-white/40 px-4 text-sm font-medium text-[#3D2B1F] hover:bg-white/60">Skip</button>
+          className="min-h-[44px] rounded-2xl bg-[#FDF6EE]/40 px-4 text-sm font-medium text-[#3D1A08] hover:bg-[#FDF6EE]/60">Skip</button>
         <button onClick={() => plan.nowTask && handleStartTask(plan.nowTask.id)}
-          className="min-h-[44px] rounded-2xl bg-white/40 px-3 text-sm font-medium text-[#3D2B1F] hover:bg-white/60 flex items-center gap-1.5">
+          className="min-h-[44px] rounded-2xl bg-[#FDF6EE]/40 px-3 text-sm font-medium text-[#3D1A08] hover:bg-[#FDF6EE]/60 flex items-center gap-1.5">
           <PlayCircle className="h-4 w-4" />{timer.activeTaskId === plan.nowTask.id ? "Stop" : "Start"}
         </button>
       </div>
     </div>
   ) : (
-    <div className="rounded-3xl border border-[#E8BB60] bg-[#F5CF82] px-5 py-4 shadow-sm text-[#7A6050] text-sm">
+    <div className="rounded-3xl border border-[#D4946A] bg-[#E8D0B8] px-5 py-4 shadow-sm text-[#7A4A2A] text-sm">
       {quickMode ? `No quick tasks ≤ ${QUICK_TASK_MAX_DURATION} min. Turn off quick mode.` : "You're done for today. Nice work."}
     </div>
   );
@@ -1067,10 +1067,10 @@ export default function DayPlannerDecidesForYou() {
   // Show spinner while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#FDF6EE] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-[#F5CF82] animate-pulse" />
-          <p className="text-sm text-[#B8CCFA]">Loading…</p>
+          <div className="h-10 w-10 rounded-2xl bg-[#E8D0B8] animate-pulse" />
+          <p className="text-sm text-[#C8A87C]">Loading…</p>
         </div>
       </div>
     );
@@ -1086,18 +1086,18 @@ export default function DayPlannerDecidesForYou() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-[#FDF6EE]">
       <div className="flex-1 overflow-y-auto pb-24">
         <div className="mx-auto max-w-2xl px-4 pt-5">
 
           {/* ── Sync indicator + sign out ── */}
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-[#B8CCFA]">
+            <span className="text-xs text-[#C8A87C]">
               {dbLoading ? "Syncing…" : `Signed in as ${user.email}`}
             </span>
             <button
               onClick={async () => { await supabase.auth.signOut(); router.push("/login"); }}
-              className="flex items-center gap-1.5 rounded-xl bg-[#FFFBF0] px-3 py-1.5 text-xs text-[#7A6050] hover:bg-[#FFF5D6] min-h-[36px]"
+              className="flex items-center gap-1.5 rounded-xl bg-[#F5E6D3] px-3 py-1.5 text-xs text-[#7A4A2A] hover:bg-[#EDD8C0] min-h-[36px]"
             >
               <LogOut className="h-3.5 w-3.5" /> Sign out
             </button>
@@ -1109,7 +1109,7 @@ export default function DayPlannerDecidesForYou() {
               {nowCard}
 
               <div className={cardCls}>
-                <h2 className="text-sm font-semibold text-[#3D2B1F] mb-3">How are you feeling?</h2>
+                <h2 className="text-sm font-semibold text-[#3D1A08] mb-3">How are you feeling?</h2>
                 <div className="grid gap-2">
                   {ENERGY_STATES.map((state) => {
                     const Icon   = state.icon;
@@ -1120,7 +1120,7 @@ export default function DayPlannerDecidesForYou() {
                           <Icon className="h-5 w-5 shrink-0" />
                           <div>
                             <div className="text-sm font-medium">{state.label}</div>
-                            <div className={`text-xs ${active ? "text-[#7A6050]" : "text-[#B8CCFA]"}`}>
+                            <div className={`text-xs ${active ? "text-[#7A4A2A]" : "text-[#C8A87C]"}`}>
                               {state.value === "tired" ? "Quick mode auto-enabled." : "Planner adjusts difficulty."}
                             </div>
                           </div>
@@ -1129,12 +1129,12 @@ export default function DayPlannerDecidesForYou() {
                     );
                   })}
                   <button onClick={() => setQuickMode((q) => !q)}
-                    className={`min-h-[52px] w-full rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${quickMode ? "border-[#82A8F5] bg-[#EEF3FE] text-[#2A50A0]" : "border-[#F5CF82] bg-white text-[#3D2B1F] hover:bg-[#FFFBF0]"}`}>
+                    className={`min-h-[52px] w-full rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${quickMode ? "border-[#C85A2A] bg-[#F5E6D3] text-[#7A2A08]" : "border-[#E8D0B8] bg-[#FDF6EE] text-[#3D1A08] hover:bg-[#F5E6D3]"}`}>
                     <div className="flex items-center gap-3">
                       <Clock className="h-5 w-5 shrink-0" />
                       <div>
                         <div>Quick task mode {quickMode ? "ON" : "OFF"}</div>
-                        <div className={`text-xs font-normal ${quickMode ? "text-[#4070CC]" : "text-[#B8CCFA]"}`}>Only shows tasks ≤ {QUICK_TASK_MAX_DURATION} min</div>
+                        <div className={`text-xs font-normal ${quickMode ? "text-[#C85A2A]" : "text-[#C8A87C]"}`}>Only shows tasks ≤ {QUICK_TASK_MAX_DURATION} min</div>
                       </div>
                     </div>
                   </button>
@@ -1144,10 +1144,10 @@ export default function DayPlannerDecidesForYou() {
               <div className={cardCls}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-2xl font-semibold text-[#3D2B1F] tracking-tight">{formatTime(currentHour, currentMinute)}</div>
-                    <div className="text-sm text-[#7A6050] mt-0.5">{plan.segment.label} · creativity {plan.segment.creativity}</div>
+                    <div className="text-2xl font-semibold text-[#3D1A08] tracking-tight">{formatTime(currentHour, currentMinute)}</div>
+                    <div className="text-sm text-[#7A4A2A] mt-0.5">{plan.segment.label} · creativity {plan.segment.creativity}</div>
                   </div>
-                  <div className="rounded-xl bg-[#EEF3FE] px-3 py-1.5 text-xs text-[#4070CC] font-medium">Auto-synced</div>
+                  <div className="rounded-xl bg-[#F5E6D3] px-3 py-1.5 text-xs text-[#C85A2A] font-medium">Auto-synced</div>
                 </div>
               </div>
             </div>
@@ -1157,24 +1157,24 @@ export default function DayPlannerDecidesForYou() {
           {activeTab === "tasks" && (
             <div className="space-y-3">
               <div className="flex gap-3">
-                <button onClick={openAddEventModal} className="flex-1 min-h-[48px] rounded-2xl bg-[#F5CF82] border border-[#E8BB60] px-4 text-sm font-medium text-[#3D2B1F] hover:bg-[#E8BB60] transition">
+                <button onClick={openAddEventModal} className="flex-1 min-h-[48px] rounded-2xl bg-[#E8D0B8] border border-[#D4946A] px-4 text-sm font-medium text-[#3D1A08] hover:bg-[#D4946A] transition">
                   + Fixed event
                 </button>
-                <button onClick={openAddTaskModal} className="flex-1 min-h-[48px] rounded-2xl bg-white border border-[#F5CF82] px-4 text-sm font-medium text-[#3D2B1F] hover:bg-[#FFFBF0] transition">
+                <button onClick={openAddTaskModal} className="flex-1 min-h-[48px] rounded-2xl bg-[#FDF6EE] border border-[#E8D0B8] px-4 text-sm font-medium text-[#3D1A08] hover:bg-[#F5E6D3] transition">
                   + Task
                 </button>
               </div>
 
               <div className="flex gap-2 flex-wrap">
-                <button onClick={resetDay} className="min-h-[40px] rounded-xl bg-[#FFFBF0] px-3 text-xs text-[#7A6050] hover:bg-[#FFF5D6]">Reset day</button>
-                <button onClick={unskipAll} className="min-h-[40px] rounded-xl bg-[#FFFBF0] px-3 text-xs text-[#7A6050] hover:bg-[#FFF5D6]">Unskip all</button>
+                <button onClick={resetDay} className="min-h-[40px] rounded-xl bg-[#F5E6D3] px-3 text-xs text-[#7A4A2A] hover:bg-[#EDD8C0]">Reset day</button>
+                <button onClick={unskipAll} className="min-h-[40px] rounded-xl bg-[#F5E6D3] px-3 text-xs text-[#7A4A2A] hover:bg-[#EDD8C0]">Unskip all</button>
                 <button onClick={() => { if (window.confirm("Clear all tasks?")) { persistTasks([]); persistSkipped([]); timer.stopTimer(); } }}
-                  className="min-h-[40px] rounded-xl bg-[#FFE8E0] px-3 text-xs text-[#D86868] hover:opacity-80">Clear all</button>
+                  className="min-h-[40px] rounded-xl bg-[#F5C4B0] px-3 text-xs text-[#8BBF90] hover:opacity-80">Clear all</button>
               </div>
 
               {fixedEvents.length > 0 && (
                 <div>
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#B8CCFA]">Fixed events</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#C8A87C]">Fixed events</div>
                   <div className="space-y-2">
                     {[...fixedEvents].sort((a, b) => toMinutes(a.startHour, a.startMinute) - toMinutes(b.startHour, b.startMinute)).map((ev) => (
                       <EventRow key={ev.id} event={ev} />
@@ -1185,27 +1185,27 @@ export default function DayPlannerDecidesForYou() {
 
               {pending.length > 0 && (
                 <div>
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#B8CCFA]">Tasks — {pending.length} remaining</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#C8A87C]">Tasks — {pending.length} remaining</div>
                   <div className="space-y-2">{pending.map((task, i) => <TaskRow key={task.id} task={task} index={i} />)}</div>
                 </div>
               )}
 
               {skipped.length > 0 && (
                 <div>
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#B8CCFA]">Skipped</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#C8A87C]">Skipped</div>
                   <div className="space-y-2">{skipped.map((task, i) => <TaskRow key={task.id} task={task} index={i} />)}</div>
                 </div>
               )}
 
               {done.length > 0 && (
                 <div>
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#B8CCFA]">Done — {done.length}</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#C8A87C]">Done — {done.length}</div>
                   <div className="space-y-2">{done.map((task, i) => <TaskRow key={task.id} task={task} index={i} />)}</div>
                 </div>
               )}
 
               {pending.length === 0 && done.length === 0 && skipped.length === 0 && fixedEvents.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-[#F5CF82] p-8 text-center text-sm text-[#B8CCFA]">
+                <div className="rounded-2xl border border-dashed border-[#E8D0B8] p-8 text-center text-sm text-[#C8A87C]">
                   Nothing here yet — add a task or event above.
                 </div>
               )}
@@ -1218,55 +1218,55 @@ export default function DayPlannerDecidesForYou() {
               <div className={cardCls}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <CalendarDays className="h-5 w-5 text-[#7A6050]" />
-                    <h2 className="text-base font-semibold text-[#3D2B1F]">Day timeline</h2>
+                    <CalendarDays className="h-5 w-5 text-[#7A4A2A]" />
+                    <h2 className="text-base font-semibold text-[#3D1A08]">Day timeline</h2>
                   </div>
-                  <span className="text-xs text-[#B8CCFA]">from {formatTime(currentHour, currentMinute)}</span>
+                  <span className="text-xs text-[#C8A87C]">from {formatTime(currentHour, currentMinute)}</span>
                 </div>
-                <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#B8CCFA]">
+                <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#C8A87C]">
                   {[
-                    { label: "deep work",  bg: "bg-[#ED98C3]", border: "border-[#D870A8]" },
-                    { label: "physical",   bg: "bg-[#ED9898]", border: "border-[#D86868]" },
-                    { label: "life admin", bg: "bg-[#EDC398]", border: "border-[#D8A068]" },
-                    { label: "chore",      bg: "bg-[#F9E5AB]", border: "border-[#E8C860]" },
-                    { label: "recovery",   bg: "bg-[#DBED9D]", border: "border-[#A8D860]" },
-                    { label: "event",      bg: "bg-[#F5CF82]", border: "border-[#E8BB60]" },
+                    { label: "deep work",  bg: "bg-[#F5E6D3]", border: "border-[#D4946A]" },
+                    { label: "physical",   bg: "bg-[#D6EAD8]", border: "border-[#8BBF90]" },
+                    { label: "life admin", bg: "bg-[#FDDDD0]", border: "border-[#E8A87C]" },
+                    { label: "chore",      bg: "bg-[#F5E6D3]", border: "border-[#C8A87C]" },
+                    { label: "recovery",   bg: "bg-[#E8F0D8]", border: "border-[#A8C880]" },
+                    { label: "event",      bg: "bg-[#E8D0B8]", border: "border-[#D4946A]" },
                   ].map(({ label, bg, border }) => (
                     <span key={label} className="flex items-center gap-1">
                       <span className={`inline-block h-2.5 w-2.5 rounded-sm border ${bg} ${border}`} />
                       {label}
                     </span>
                   ))}
-                  <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-4 bg-[#82A8F5]" /> now</span>
+                  <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-4 bg-[#C85A2A]" /> now</span>
                 </div>
-                <div className="overflow-hidden rounded-2xl border border-[#FFF5D6]">
+                <div className="overflow-hidden rounded-2xl border border-[#EDD8C0]">
                   <DayTimeline blocks={timelineBlocks} currentHour={currentHour} currentMinute={currentMinute}
                     onTaskClick={(task) => { openEditTaskModal(task); setActiveTab("tasks"); }} />
                 </div>
-                <p className="mt-2 text-xs text-[#B8CCFA]">Tap a task block to edit it.</p>
+                <p className="mt-2 text-xs text-[#C8A87C]">Tap a task block to edit it.</p>
               </div>
 
               <div className={cardCls}>
                 <button onClick={() => setShowHistory((h) => !h)} className="flex w-full items-center justify-between min-h-[44px]">
                   <div className="flex items-center gap-2">
-                    <History className="h-5 w-5 text-[#7A6050]" />
-                    <span className="text-base font-semibold text-[#3D2B1F]">History</span>
-                    {todayLog.length > 0 && <span className="rounded-full bg-[#FFFBF0] px-2 py-0.5 text-xs text-[#7A6050]">{todayDone.length}✓ {todaySkipped.length}✗</span>}
+                    <History className="h-5 w-5 text-[#7A4A2A]" />
+                    <span className="text-base font-semibold text-[#3D1A08]">History</span>
+                    {todayLog.length > 0 && <span className="rounded-full bg-[#F5E6D3] px-2 py-0.5 text-xs text-[#7A4A2A]">{todayDone.length}✓ {todaySkipped.length}✗</span>}
                   </div>
-                  {showHistory ? <ChevronUp className="h-4 w-4 text-[#B8CCFA]" /> : <ChevronDown className="h-4 w-4 text-[#B8CCFA]" />}
+                  {showHistory ? <ChevronUp className="h-4 w-4 text-[#C8A87C]" /> : <ChevronDown className="h-4 w-4 text-[#C8A87C]" />}
                 </button>
                 {showHistory && (
                   <div className="mt-3 space-y-4">
                     <div>
-                      <div className="mb-2 text-xs font-semibold text-[#B8CCFA] uppercase tracking-wide">Today</div>
-                      {todayLog.length === 0 ? <div className="text-sm text-[#B8CCFA]">No activity yet.</div>
+                      <div className="mb-2 text-xs font-semibold text-[#C8A87C] uppercase tracking-wide">Today</div>
+                      {todayLog.length === 0 ? <div className="text-sm text-[#C8A87C]">No activity yet.</div>
                         : <div className="space-y-1.5">{[...todayDone, ...todaySkipped].sort((a, b) => a.timestamp - b.timestamp).map((e) => <LogRow key={e.id} entry={e} />)}</div>}
                     </div>
                     <div>
-                      <div className="mb-2 text-xs font-semibold text-[#B8CCFA] uppercase tracking-wide">
+                      <div className="mb-2 text-xs font-semibold text-[#C8A87C] uppercase tracking-wide">
                         Yesterday{yesterdayLog.length > 0 ? ` — ${yestDone.length}✓ ${yestSkipped.length}✗` : ""}
                       </div>
-                      {yesterdayLog.length === 0 ? <div className="text-sm text-[#B8CCFA]">No activity yesterday.</div>
+                      {yesterdayLog.length === 0 ? <div className="text-sm text-[#C8A87C]">No activity yesterday.</div>
                         : <div className="space-y-1.5">{[...yestDone, ...yestSkipped].sort((a, b) => a.timestamp - b.timestamp).map((e) => <LogRow key={e.id} entry={e} />)}</div>}
                     </div>
                   </div>
@@ -1276,36 +1276,36 @@ export default function DayPlannerDecidesForYou() {
               <div className={cardCls}>
                 <button onClick={() => setShowLearning((s) => !s)} className="flex w-full items-center justify-between min-h-[44px]">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-[#7A6050]" />
-                    <span className="text-base font-semibold text-[#3D2B1F]">What it&apos;s learned</span>
-                    {learningInsights.length > 0 && <span className="rounded-full bg-[#FFFBF0] px-2 py-0.5 text-xs text-[#7A6050]">{learningInsights.length} patterns</span>}
+                    <TrendingUp className="h-5 w-5 text-[#7A4A2A]" />
+                    <span className="text-base font-semibold text-[#3D1A08]">What it&apos;s learned</span>
+                    {learningInsights.length > 0 && <span className="rounded-full bg-[#F5E6D3] px-2 py-0.5 text-xs text-[#7A4A2A]">{learningInsights.length} patterns</span>}
                   </div>
-                  {showLearning ? <ChevronUp className="h-4 w-4 text-[#B8CCFA]" /> : <ChevronDown className="h-4 w-4 text-[#B8CCFA]" />}
+                  {showLearning ? <ChevronUp className="h-4 w-4 text-[#C8A87C]" /> : <ChevronDown className="h-4 w-4 text-[#C8A87C]" />}
                 </button>
                 {showLearning && (
                   <div className="mt-3">
                     {learningInsights.length === 0
-                      ? <p className="text-sm text-[#B8CCFA]">Complete or skip at least {LEARNING_MIN_EVENTS} tasks per context to see patterns.</p>
+                      ? <p className="text-sm text-[#C8A87C]">Complete or skip at least {LEARNING_MIN_EVENTS} tasks per context to see patterns.</p>
                       : <div className="space-y-3">
                           {learningInsights.map((ins) => (
-                            <div key={ins.key} className="rounded-2xl border border-[#FFF5D6] p-3">
+                            <div key={ins.key} className="rounded-2xl border border-[#EDD8C0] p-3">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <div className="text-sm font-medium text-[#3D2B1F] capitalize">{ins.type}</div>
-                                  <div className="text-xs text-[#B8CCFA] capitalize">{ins.segment} · {ins.energy} · {ins.done + ins.skipped} sessions</div>
+                                  <div className="text-sm font-medium text-[#3D1A08] capitalize">{ins.type}</div>
+                                  <div className="text-xs text-[#C8A87C] capitalize">{ins.segment} · {ins.energy} · {ins.done + ins.skipped} sessions</div>
                                 </div>
                                 <div className="text-right">
-                                  <div className={`text-sm font-medium ${ins.rate >= 70 ? "text-[#3D2B1F]" : ins.rate <= 40 ? "text-[#4070CC]" : "text-[#E8BB60]"}`}>{ins.rate}%</div>
-                                  <div className="text-xs text-[#B8CCFA]">{ins.done}✓ {ins.skipped}✗</div>
+                                  <div className={`text-sm font-medium ${ins.rate >= 70 ? "text-[#3D1A08]" : ins.rate <= 40 ? "text-[#C85A2A]" : "text-[#D4946A]"}`}>{ins.rate}%</div>
+                                  <div className="text-xs text-[#C8A87C]">{ins.done}✓ {ins.skipped}✗</div>
                                 </div>
                               </div>
-                              <div className="mt-2 h-1.5 rounded-full bg-[#FFFBF0] overflow-hidden">
-                                <div className={`h-full rounded-full ${ins.rate >= 70 ? "bg-[#DBED9D]" : ins.rate <= 40 ? "bg-[#82A8F5]" : "bg-[#F5CF82]"}`} style={{ width: `${ins.rate}%` }} />
+                              <div className="mt-2 h-1.5 rounded-full bg-[#F5E6D3] overflow-hidden">
+                                <div className={`h-full rounded-full ${ins.rate >= 70 ? "bg-[#E8F0D8]" : ins.rate <= 40 ? "bg-[#C85A2A]" : "bg-[#E8D0B8]"}`} style={{ width: `${ins.rate}%` }} />
                               </div>
                             </div>
                           ))}
                         </div>}
-                    <div className="mt-3 rounded-2xl bg-[#FFFBF0] p-3 text-xs text-[#B8CCFA]">
+                    <div className="mt-3 rounded-2xl bg-[#F5E6D3] p-3 text-xs text-[#C8A87C]">
                       Subtle ±{LEARNING_MAX_BONUS}pt nudge. Needs ≥{LEARNING_MIN_EVENTS} events per context.
                     </div>
                   </div>
@@ -1318,15 +1318,15 @@ export default function DayPlannerDecidesForYou() {
       </div>
 
       {/* FIX: safe-area-inset-bottom for iPhone home indicator */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#F5CF82] bg-white/95 backdrop-blur-sm"
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#E8D0B8] bg-[#FDF6EE]/95 backdrop-blur-sm"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className="mx-auto flex max-w-2xl">
           {TABS.map(({ key, label, icon }) => (
             <button key={key} onClick={() => setActiveTab(key)}
-              className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium transition min-h-[56px] ${activeTab === key ? "text-[#3D2B1F]" : "text-[#B8CCFA] hover:text-[#7A6050]"}`}>
-              <span className={activeTab === key ? "text-[#3D2B1F]" : "text-[#B8CCFA]"}>{icon}</span>
+              className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium transition min-h-[56px] ${activeTab === key ? "text-[#3D1A08]" : "text-[#C8A87C] hover:text-[#7A4A2A]"}`}>
+              <span className={activeTab === key ? "text-[#3D1A08]" : "text-[#C8A87C]"}>{icon}</span>
               {label}
-              {activeTab === key && <span className="h-1 w-6 rounded-full bg-[#82A8F5]" />}
+              {activeTab === key && <span className="h-1 w-6 rounded-full bg-[#C85A2A]" />}
             </button>
           ))}
         </div>
