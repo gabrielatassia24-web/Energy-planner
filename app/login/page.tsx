@@ -1,13 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 export default function LoginPage() {
+  const router       = useRouter();
+  const searchParams = useSearchParams();
   const [email,   setEmail]   = useState("");
   const [sent,    setSent]    = useState(false);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+
+  // Handle magic link code when Supabase redirects back to /login
+  useEffect(() => {
+    const code = searchParams.get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) {
+          router.push("/");
+        } else {
+          setError("Login link expired. Please request a new one.");
+        }
+      });
+    }
+  }, [searchParams, router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -18,7 +35,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `https://daily-energy-planner.vercel.app/auth/callback`,
+        emailRedirectTo: `https://daily-energy-planner.vercel.app/login`,
       },
     });
 
