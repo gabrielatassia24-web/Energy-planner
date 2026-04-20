@@ -372,25 +372,61 @@ function buildTimeline(
 
 // ─── Timer hook ───────────────────────────────────────────────────────────────
 
+const SK_TIMER_ID    = "planner-timer-id-v1";
+const SK_TIMER_START = "planner-timer-start-v1";
+
 function useTaskTimer() {
-  const [activeTaskId,   setActiveTaskId]   = useState<string | null>(null);
-  const [secondsElapsed, setSecondsElapsed] = useState(0);
+  // Restore timer from localStorage on mount so it survives page exits
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(SK_TIMER_ID) ?? null;
+  });
+  const [startTimestamp, setStartTimestamp] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const s = localStorage.getItem(SK_TIMER_START);
+    return s ? Number(s) : null;
+  });
+  const [secondsElapsed, setSecondsElapsed] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    const s = localStorage.getItem(SK_TIMER_START);
+    return s ? Math.floor((Date.now() - Number(s)) / 1000) : 0;
+  });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  function startTimer(id: string) {
+  // Tick every second using the saved start time as source of truth
+  useEffect(() => {
+    if (!startTimestamp) return;
     if (intervalRef.current) clearInterval(intervalRef.current);
-    setActiveTaskId(id); setSecondsElapsed(0);
-    intervalRef.current = setInterval(() => setSecondsElapsed((s) => s + 1), 1000);
+    intervalRef.current = setInterval(() => {
+      setSecondsElapsed(Math.floor((Date.now() - startTimestamp) / 1000));
+    }, 1000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [startTimestamp]);
+
+  function startTimer(id: string) {
+    const now = Date.now();
+    setActiveTaskId(id);
+    setStartTimestamp(now);
+    setSecondsElapsed(0);
+    localStorage.setItem(SK_TIMER_ID,    id);
+    localStorage.setItem(SK_TIMER_START, String(now));
   }
+
   function stopTimer() {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    setActiveTaskId(null); setSecondsElapsed(0);
+    setActiveTaskId(null);
+    setStartTimestamp(null);
+    setSecondsElapsed(0);
+    localStorage.removeItem(SK_TIMER_ID);
+    localStorage.removeItem(SK_TIMER_START);
   }
+
   function formatElapsed(): string {
     const m = Math.floor(secondsElapsed / 60), s = secondsElapsed % 60;
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   }
-  return { activeTaskId, formatElapsed, startTimer, stopTimer };
+
+  return { activeTaskId, secondsElapsed, formatElapsed, startTimer, stopTimer };
 }
 
 // ─── DayTimeline — defined OUTSIDE main component so it never re-mounts ───────
