@@ -1,5 +1,4 @@
 import { createServerClient } from "@supabase/ssr";
-import { EOF } from "dns";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -29,4 +28,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.redirect(`${origin}/`);
 }
-EOF
