@@ -26,6 +26,8 @@ export interface Task {
   urgency: number;
   preferredSegment: SegmentKey;
   done: boolean;
+  windowStart: number | null;
+  windowEnd: number | null;
 }
 
 export interface FixedEvent {
@@ -83,6 +85,8 @@ export async function fetchTasks(userId: string): Promise<Task[]> {
     urgency:          row.urgency,
     preferredSegment: row.preferred_segment as SegmentKey,
     done:             row.done,
+    windowStart:      row.window_start ?? null,
+    windowEnd:        row.window_end   ?? null,
   }));
 }
 
@@ -99,6 +103,8 @@ export async function upsertTask(userId: string, task: Task): Promise<void> {
     urgency:            task.urgency,
     preferred_segment:  task.preferredSegment,
     done:               task.done,
+    window_start:       task.windowStart,
+    window_end:         task.windowEnd,
   }, { onConflict: "id" });
   if (error) console.error("upsertTask", error);
 }

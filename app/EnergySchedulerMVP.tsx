@@ -75,6 +75,8 @@ interface Task {
   urgency: number;
   preferredSegment: SegmentKey;
   done: boolean;
+  windowStart: number | null;
+  windowEnd: number | null;
 }
 
 interface RankedTask extends Task {
@@ -91,6 +93,8 @@ interface TaskForm {
   importance: number;
   urgency: number;
   preferredSegment: SegmentKey;
+  windowStart: number | null;
+  windowEnd: number | null;
 }
 
 interface FixedEvent {
@@ -236,6 +240,9 @@ function scoreTask(
 ): { base: number; learningBonus: number } {
   if (task.done) return { base: -9999, learningBonus: 0 };
   if (quickMode && task.duration > QUICK_TASK_MAX_DURATION) return { base: -500, learningBonus: 0 };
+  const nowHour = Math.floor(nowMin / 60);
+  if (task.windowStart !== null && nowHour < task.windowStart) return { base: -9999, learningBonus: 0 };
+  if (task.windowEnd   !== null && nowHour >= task.windowEnd)  return { base: -9999, learningBonus: 0 };
 
   // FIX: penalise tasks that would overlap an upcoming fixed event
   const taskEndMin = nowMin + task.duration;
@@ -303,7 +310,7 @@ function makeInitialEvents(): FixedEvent[] {
   return [];
 }
 
-const emptyTaskForm: TaskForm   = { title: "", type: "deep work", energy: "medium", creativity: "medium", duration: 30, importance: 3, urgency: 3, preferredSegment: "midday" };
+const emptyTaskForm: TaskForm   = { title: "", type: "deep work", energy: "medium", creativity: "medium", duration: 30, importance: 3, urgency: 3, preferredSegment: "midday", windowStart: null, windowEnd: null };
 const emptyEventForm: EventForm = { title: "", startHour: 9, startMinute: 0, endHour: 10, endMinute: 0, type: "deep work", energy: "medium", creativity: "medium" };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -613,6 +620,26 @@ function TaskFormFields({ taskForm, setTaskForm, editingTaskId, onSave, onDelete
             <option value={4}>4 — tomorrow</option>
             <option value={5}>5 — due today</option>
           </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Earliest (hour)</label>
+          <input className={inputCls} type="text" inputMode="numeric" placeholder="e.g. 7"
+            value={taskForm.windowStart ?? ""}
+            onChange={(e) => {
+              const r = e.target.value.replace(/[^0-9]/g, "");
+              setTaskForm((f) => ({ ...f, windowStart: r === "" ? null : Math.min(23, Number(r)) }));
+            }} />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Latest (hour)</label>
+          <input className={inputCls} type="text" inputMode="numeric" placeholder="e.g. 22"
+            value={taskForm.windowEnd ?? ""}
+            onChange={(e) => {
+              const r = e.target.value.replace(/[^0-9]/g, "");
+              setTaskForm((f) => ({ ...f, windowEnd: r === "" ? null : Math.min(23, Number(r)) }));
+            }} />
         </div>
       </div>
       <div className="flex gap-2">
@@ -953,7 +980,7 @@ export default function DayPlannerDecidesForYou() {
   function openAddTaskModal()  { setEditingTaskId(null); setTaskForm(emptyTaskForm); setShowTaskModal(true); setTimeout(() => titleInputRef.current?.focus(), 100); }
   function openEditTaskModal(task: Task) {
     setEditingTaskId(task.id);
-    setTaskForm({ title: task.title, type: task.type, energy: task.energy, creativity: task.creativity, duration: task.duration, importance: task.importance, urgency: task.urgency, preferredSegment: task.preferredSegment });
+    setTaskForm({ title: task.title, type: task.type, energy: task.energy, creativity: task.creativity, duration: task.duration, importance: task.importance, urgency: task.urgency, preferredSegment: task.preferredSegment, windowStart: task.windowStart, windowEnd: task.windowEnd });
     setShowTaskModal(true);
     setTimeout(() => titleInputRef.current?.focus(), 100);
   }
