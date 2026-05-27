@@ -972,11 +972,6 @@ export default function DayPlannerDecidesForYou() {
             </button>
           </div>
         </div>
-        <div className="flex justify-center mt-2">
-          <button onClick={() => deleteTask(task.id)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F5C4B0] border border-[#E8A888] text-[#3D1A08] hover:opacity-80" style={{boxShadow: '0 3px 0 #C87858'}}>
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
       </div>
     );
   }
