@@ -100,6 +100,9 @@ interface FixedEvent {
   startMinute: number;
   endHour: number;
   endMinute: number;
+  type: TaskType;
+  energy: EnergyLevel;
+  creativity: CreativityLevel;
 }
 
 interface EventForm {
@@ -108,6 +111,9 @@ interface EventForm {
   startMinute: number;
   endHour: number;
   endMinute: number;
+  type: TaskType;
+  energy: EnergyLevel;
+  creativity: CreativityLevel;
 }
 
 interface Plan {
@@ -277,7 +283,7 @@ function makeInitialEvents(): FixedEvent[] {
 }
 
 const emptyTaskForm: TaskForm   = { title: "", type: "deep work", energy: "medium", creativity: "medium", duration: 30, importance: 3, urgency: 3, preferredSegment: "midday" };
-const emptyEventForm: EventForm = { title: "", startHour: 9, startMinute: 0, endHour: 10, endMinute: 0 };
+const emptyEventForm: EventForm = { title: "", startHour: 9, startMinute: 0, endHour: 10, endMinute: 0, type: "deep work", energy: "medium", creativity: "medium" };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
@@ -650,6 +656,26 @@ function EventFormFields({ eventForm, setEventForm, eventFormError, onSave }: Ev
           </div>
         );
       })}
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Type</label>
+          <select className={inputCls} value={eventForm.type} onChange={(e) => setEventForm((f) => ({ ...f, type: e.target.value as TaskType }))}>
+            {TASK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Energy</label>
+          <select className={inputCls} value={eventForm.energy} onChange={(e) => setEventForm((f) => ({ ...f, energy: e.target.value as EnergyLevel }))}>
+            {(["low", "medium", "high"] as EnergyLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[#7A4A2A]">Creativity</label>
+          <select className={inputCls} value={eventForm.creativity} onChange={(e) => setEventForm((f) => ({ ...f, creativity: e.target.value as CreativityLevel }))}>
+            {(["low", "medium", "high"] as CreativityLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+      </div>
       {eventFormError && <p className="text-sm text-red-500">{eventFormError}</p>}
       {!eventFormError && eventForm.title.trim() && (
         <p className="text-sm text-[#C8A87C]">{formatTime(eventForm.startHour, eventForm.startMinute)} → {formatTime(eventForm.endHour, eventForm.endMinute)}</p>

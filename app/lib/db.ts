@@ -35,6 +35,9 @@ export interface FixedEvent {
   startMinute: number;
   endHour: number;
   endMinute: number;
+  type: TaskType;
+  energy: EnergyLevel;
+  creativity: CreativityLevel;
 }
 
 export interface TaskLogEntry {
@@ -128,6 +131,9 @@ export async function fetchFixedEvents(userId: string): Promise<FixedEvent[]> {
     startMinute: row.start_minute,
     endHour:     row.end_hour,
     endMinute:   row.end_minute,
+    type:        (row.type ?? "deep work") as TaskType,
+    energy:      (row.energy ?? "medium") as EnergyLevel,
+    creativity:  (row.creativity ?? "medium") as CreativityLevel,
   }));
 }
 
@@ -140,6 +146,9 @@ export async function insertFixedEvent(userId: string, event: FixedEvent): Promi
     start_minute: event.startMinute,
     end_hour:     event.endHour,
     end_minute:   event.endMinute,
+    type:         event.type,
+    energy:       event.energy,
+    creativity:   event.creativity,
   });
   if (error) console.error("insertFixedEvent", error);
 }
