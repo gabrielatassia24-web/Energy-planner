@@ -35,7 +35,7 @@ function LoginForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `https://daily-energy-planner.vercel.app/login`,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
