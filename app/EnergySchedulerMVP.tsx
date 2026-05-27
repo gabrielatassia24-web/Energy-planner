@@ -269,20 +269,11 @@ function buildPlan(
 // ─── Initial data ─────────────────────────────────────────────────────────────
 
 function makeInitialTasks(): Task[] {
-  return [
-    { id: crypto.randomUUID(), title: "Gym",               type: "physical",   energy: "high",   creativity: "low",    duration: 60, importance: 5, urgency: 3, preferredSegment: "morning",   done: false },
-    { id: crypto.randomUUID(), title: "Study for exam",    type: "deep work",  energy: "high",   creativity: "medium", duration: 90, importance: 5, urgency: 5, preferredSegment: "midday",    done: false },
-    { id: crypto.randomUUID(), title: "Answer emails",     type: "life admin", energy: "medium", creativity: "low",    duration: 30, importance: 3, urgency: 4, preferredSegment: "afternoon", done: false },
-    { id: crypto.randomUUID(), title: "Laundry",           type: "chore",      energy: "low",    creativity: "low",    duration: 30, importance: 2, urgency: 2, preferredSegment: "evening",   done: false },
-    { id: crypto.randomUUID(), title: "Stretch & recover", type: "recovery",   energy: "low",    creativity: "low",    duration: 20, importance: 4, urgency: 2, preferredSegment: "evening",   done: false },
-  ];
+  return [];
 }
 
 function makeInitialEvents(): FixedEvent[] {
-  return [
-    { id: crypto.randomUUID(), title: "Lecture",    startHour: 9,  startMinute: 0, endHour: 11, endMinute: 0 },
-    { id: crypto.randomUUID(), title: "Work shift", startHour: 14, startMinute: 0, endHour: 16, endMinute: 0 },
-  ];
+  return [];
 }
 
 const emptyTaskForm: TaskForm   = { title: "", type: "deep work", energy: "medium", creativity: "medium", duration: 30, importance: 3, urgency: 3, preferredSegment: "midday" };
