@@ -222,9 +222,17 @@ function recordOutcome(lm: LearningMap, type: TaskType, seg: SegmentKey, energy:
 
 // ─── Scoring ──────────────────────────────────────────────────────────────────
 
+const EVENT_DRAIN: Record<EnergyLevel, number> = { high: 3, medium: 1.5, low: 0.5 };
+
+function calcEventDrain(events: FixedEvent[], nowMin: number): number {
+  return events
+    .filter((e) => toMinutes(e.endHour, e.endMinute) <= nowMin)
+    .reduce((sum, e) => sum + EVENT_DRAIN[e.energy], 0);
+}
+
 function scoreTask(
   task: Task, seg: DaySegment, es: EnergyState, lm: LearningMap,
-  quickMode: boolean, nowMin: number, events: FixedEvent[]
+  quickMode: boolean, nowMin: number, events: FixedEvent[], eventDrain: number
 ): { base: number; learningBonus: number } {
   if (task.done) return { base: -9999, learningBonus: 0 };
   if (quickMode && task.duration > QUICK_TASK_MAX_DURATION) return { base: -500, learningBonus: 0 };
@@ -252,6 +260,18 @@ function scoreTask(
   if (es.value === "tired" && task.duration > 60)         s -= 10;
   if (quickMode && task.duration <= QUICK_TASK_MAX_DURATION) s += 30;
 
+  // Penalise demanding tasks after draining fixed events
+  if (eventDrain >= 2) {
+    if (task.energy === "high") s -= 12;
+    if (task.duration > 60)     s -= 6;
+    if (task.energy === "low")  s += 6;
+  }
+  if (eventDrain >= 4) {
+    if (task.energy === "high") s -= 8;
+    if (task.duration > 60)     s -= 6;
+    if (task.energy === "low")  s += 4;
+  }
+
   return { base: s, learningBonus: getLearningBonus(lm, task.type, seg.key, es.value) };
 }
 
@@ -259,13 +279,14 @@ function buildPlan(
   tasks: Task[], hour: number, minute: number, es: EnergyState,
   skipped: string[], events: FixedEvent[], lm: LearningMap, quickMode: boolean
 ): Plan {
-  const seg = DAY_SEGMENTS.find((s) => hour >= s.start && hour < s.end) ?? DAY_SEGMENTS[3];
-  const now = toMinutes(hour, minute);
+  const seg        = DAY_SEGMENTS.find((s) => hour >= s.start && hour < s.end) ?? DAY_SEGMENTS[3];
+  const now        = toMinutes(hour, minute);
+  const eventDrain = calcEventDrain(events, now);
   const currentEvent = events.find((e) => now >= toMinutes(e.startHour, e.startMinute) && now < toMinutes(e.endHour, e.endMinute)) ?? null;
   const remaining    = tasks.filter((t) => !t.done && !skipped.includes(t.id));
   const ranked: RankedTask[] = remaining
     .map((t) => {
-      const { base, learningBonus } = scoreTask(t, seg, es, lm, quickMode, now, events);
+      const { base, learningBonus } = scoreTask(t, seg, es, lm, quickMode, now, events, eventDrain);
       return { ...t, score: base + learningBonus, learningBonus };
     })
     .sort((a, b) => b.score - a.score);
@@ -823,7 +844,7 @@ export default function DayPlannerDecidesForYou() {
 
   const allRanked = useMemo<RankedTask[]>(() =>
     tasks.map((t) => {
-      const { base, learningBonus } = scoreTask(t, plan.segment, energyState, learningMap, quickMode, nowMin, fixedEvents);
+      const { base, learningBonus } = scoreTask(t, plan.segment, energyState, learningMap, quickMode, nowMin, fixedEvents, calcEventDrain(fixedEvents, nowMin));
       return { ...t, score: base + learningBonus, learningBonus };
     }).sort((a, b) => b.score - a.score),
     [tasks, plan.segment, energyState, learningMap, quickMode, nowMin, fixedEvents] // eslint-disable-line
