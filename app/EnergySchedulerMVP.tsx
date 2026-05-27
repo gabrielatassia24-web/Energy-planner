@@ -1189,16 +1189,26 @@ export default function DayPlannerDecidesForYou() {
     { key: "history",  label: "History",  icon: <History className="h-5 w-5" />      },
   ];
 
-  const historyByDate = useMemo(() => {
+  const historyRows = useMemo(() => {
     const groups: Record<string, TaskLogEntry[]> = {};
     for (const e of taskLog) {
       if (!groups[e.date]) groups[e.date] = [];
       groups[e.date].push(e);
     }
-    return Object.entries(groups)
+    const sorted = Object.entries(groups)
       .sort(([a], [b]) => b.localeCompare(a))
       .slice(0, 60);
-  }, [taskLog]);
+    let lastWeek = "";
+    return sorted.map(([date, entries]) => {
+      const week = weekLabel(date);
+      const showWeekHeader = week !== lastWeek;
+      if (showWeekHeader) lastWeek = week;
+      const done    = entries.filter((e) => e.outcome === "done");
+      const skipped = entries.filter((e) => e.outcome === "skipped");
+      const totalMin = done.reduce((s, e) => s + e.taskDuration, 0);
+      return { date, entries, week, showWeekHeader, done, skipped, totalMin };
+    });
+  }, [taskLog]); // eslint-disable-line
 
   function weekLabel(dateStr: string): string {
     const d = new Date(dateStr + "T12:00:00");
@@ -1453,43 +1463,33 @@ export default function DayPlannerDecidesForYou() {
           {activeTab === "history" && (
             <div className="space-y-2">
               <h2 className="text-base font-semibold text-[#3D1A08] px-1">Activity log</h2>
-              {historyByDate.length === 0 && (
+              {historyRows.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-[#E8D0B8] p-8 text-center text-sm text-[#C8A87C]">
                   No history yet — complete tasks to see them here.
                 </div>
               )}
-              {(() => {
-                let lastWeek = "";
-                return historyByDate.map(([date, entries]) => {
-                  const week = weekLabel(date);
-                  const weekHeader = week !== lastWeek ? (lastWeek = week, (
-                    <div key={`w-${date}`} className="pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-[#C8A87C] px-1">{week}</div>
-                  )) : null;
-                  const done    = entries.filter((e) => e.outcome === "done");
-                  const skipped = entries.filter((e) => e.outcome === "skipped");
-                  const totalMin = done.reduce((s, e) => s + e.taskDuration, 0);
-                  return (
-                    <div key={date}>
-                      {weekHeader}
-                      <div className={cardCls}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-semibold text-[#3D1A08]">{dayLabel(date)}</span>
-                          <div className="flex items-center gap-2 text-xs text-[#C8A87C]">
-                            {done.length > 0 && <span className="text-[#3D1A08]">{done.length} ✓</span>}
-                            {skipped.length > 0 && <span>{skipped.length} —</span>}
-                            {totalMin > 0 && <span>{totalMin} min</span>}
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          {[...done, ...skipped].sort((a, b) => a.timestamp - b.timestamp).map((e) => (
-                            <LogRow key={e.id} entry={e} />
-                          ))}
-                        </div>
+              {historyRows.map(({ date, week, showWeekHeader, done, skipped, totalMin }) => (
+                <div key={date}>
+                  {showWeekHeader && (
+                    <div className="pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-[#C8A87C] px-1">{week}</div>
+                  )}
+                  <div className={cardCls}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-[#3D1A08]">{dayLabel(date)}</span>
+                      <div className="flex items-center gap-2 text-xs text-[#C8A87C]">
+                        {done.length > 0 && <span className="text-[#3D1A08]">{done.length} ✓</span>}
+                        {skipped.length > 0 && <span>{skipped.length} —</span>}
+                        {totalMin > 0 && <span>{totalMin} min</span>}
                       </div>
                     </div>
-                  );
-                });
-              })()}
+                    <div className="space-y-1.5">
+                      {[...done, ...skipped].sort((a, b) => a.timestamp - b.timestamp).map((e) => (
+                        <LogRow key={e.id} entry={e} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
