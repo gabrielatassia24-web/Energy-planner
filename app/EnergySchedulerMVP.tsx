@@ -518,10 +518,11 @@ interface TaskFormFieldsProps {
   setTaskForm: React.Dispatch<React.SetStateAction<TaskForm>>;
   editingTaskId: string | null;
   onSave: () => void;
+  onDelete?: () => void;
   titleRef: React.RefObject<HTMLInputElement | null>;
 }
 
-function TaskFormFields({ taskForm, setTaskForm, editingTaskId, onSave, titleRef }: TaskFormFieldsProps) {
+function TaskFormFields({ taskForm, setTaskForm, editingTaskId, onSave, onDelete, titleRef }: TaskFormFieldsProps) {
   return (
     <>
       <div>
@@ -587,11 +588,19 @@ function TaskFormFields({ taskForm, setTaskForm, editingTaskId, onSave, titleRef
           </select>
         </div>
       </div>
-      <button onClick={onSave} disabled={!taskForm.title.trim()}
-        className="w-full min-h-[48px] rounded-2xl bg-[#E8D0B8] px-4 text-base font-medium text-[#3D1A08] hover:bg-[#D4946A] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2">
-        <Sparkles className="h-4 w-4" />
-        {editingTaskId ? "Save changes" : "Add task"}
-      </button>
+      <div className="flex gap-2">
+        {editingTaskId && onDelete && (
+          <button onClick={onDelete}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F5C4B0] border border-[#E8A888] text-[#3D1A08] hover:opacity-80 transition" style={{boxShadow: '0 3px 0 #C87858'}}>
+            <Trash2 className="h-5 w-5" />
+          </button>
+        )}
+        <button onClick={onSave} disabled={!taskForm.title.trim()}
+          className="flex-1 min-h-[48px] rounded-2xl bg-[#E8D0B8] px-4 text-base font-medium text-[#3D1A08] hover:bg-[#D4946A] disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2">
+          <Sparkles className="h-4 w-4" />
+          {editingTaskId ? "Save changes" : "Add task"}
+        </button>
+      </div>
     </>
   );
 }
@@ -1326,6 +1335,7 @@ export default function DayPlannerDecidesForYou() {
             setTaskForm={setTaskForm}
             editingTaskId={editingTaskId}
             onSave={saveTask}
+            onDelete={editingTaskId ? () => { deleteTask(editingTaskId); closeTaskModal(); } : undefined}
             titleRef={titleInputRef}
           />
         </Modal>
