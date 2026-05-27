@@ -28,6 +28,7 @@ export interface Task {
   done: boolean;
   windowStart: number | null;
   windowEnd: number | null;
+  urgencyUpdatedDate: string;
 }
 
 export interface FixedEvent {
@@ -85,8 +86,9 @@ export async function fetchTasks(userId: string): Promise<Task[]> {
     urgency:          row.urgency,
     preferredSegment: row.preferred_segment as SegmentKey,
     done:             row.done,
-    windowStart:      row.window_start ?? null,
-    windowEnd:        row.window_end   ?? null,
+    windowStart:         row.window_start       ?? null,
+    windowEnd:           row.window_end         ?? null,
+    urgencyUpdatedDate:  row.urgency_updated_date ?? new Date().toISOString().slice(0, 10),
   }));
 }
 
@@ -103,8 +105,9 @@ export async function upsertTask(userId: string, task: Task): Promise<void> {
     urgency:            task.urgency,
     preferred_segment:  task.preferredSegment,
     done:               task.done,
-    window_start:       task.windowStart,
-    window_end:         task.windowEnd,
+    window_start:          task.windowStart,
+    window_end:            task.windowEnd,
+    urgency_updated_date:  task.urgencyUpdatedDate,
   }, { onConflict: "id" });
   if (error) console.error("upsertTask", error);
 }

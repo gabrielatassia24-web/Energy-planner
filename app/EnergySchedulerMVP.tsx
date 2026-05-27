@@ -45,7 +45,7 @@ type SegmentKey = "morning" | "midday" | "afternoon" | "evening";
 type EnergyStateValue = "tired" | "normal" | "energized";
 type CreativityLevel = "low" | "medium" | "high";
 type OutcomeType = "done" | "skipped";
-type TabKey = "now" | "tasks" | "timeline";
+type TabKey = "now" | "tasks" | "timeline" | "history";
 
 interface EnergyState {
   value: EnergyStateValue;
@@ -77,6 +77,7 @@ interface Task {
   done: boolean;
   windowStart: number | null;
   windowEnd: number | null;
+  urgencyUpdatedDate: string;
 }
 
 interface RankedTask extends Task {
@@ -166,12 +167,13 @@ const QUICK_TASK_MAX_DURATION = 15;
 const LEARNING_MAX_BONUS      = 8;
 const LEARNING_MIN_EVENTS     = 3;
 
-const SK_TASKS    = "planner-tasks-v3";
-const SK_EVENTS   = "planner-fixed-events-v2";
-const SK_ENERGY   = "planner-energy-v1";
-const SK_SKIPPED  = "planner-skipped-v1";
-const SK_LEARNING = "planner-learning-v1";
-const SK_LOG      = "planner-log-v1";
+const SK_TASKS      = "planner-tasks-v3";
+const SK_EVENTS     = "planner-fixed-events-v2";
+const SK_ENERGY     = "planner-energy-v1";
+const SK_SKIPPED    = "planner-skipped-v1";
+const SK_LEARNING   = "planner-learning-v1";
+const SK_LOG        = "planner-log-v1";
+const SK_LAST_RESET = "planner-last-reset-v1";
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
@@ -825,6 +827,7 @@ export default function DayPlannerDecidesForYou() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [showLearning,   setShowLearning]   = useState(false);
   const [showHistory,    setShowHistory]    = useState(false);
+  const [lastResetDate,  setLastResetDate]  = useState<string>(() => readStorage<string>(SK_LAST_RESET, ""));
 
   const timer       = useTaskTimer();
   const energyState = ENERGY_STATES.find((s) => s.value === energyStateValue) ?? ENERGY_STATES[1];
@@ -969,9 +972,41 @@ export default function DayPlannerDecidesForYou() {
   }, [timer]);
 
   function handleEnergyChange(val: EnergyStateValue) { persistEnergy(val); setQuickMode(val === "tired"); }
+
+  function performDayRollover(today: string) {
+    const BUMP_AFTER_DAYS: Record<number, number> = { 2: 5, 3: 2, 4: 1 };
+    const rolled = tasks.map((t) => {
+      const updated = { ...t, done: false };
+      if (t.urgency >= 2 && t.urgency <= 4) {
+        const threshold = BUMP_AFTER_DAYS[t.urgency];
+        const daysSince = Math.floor((Date.parse(today) - Date.parse(t.urgencyUpdatedDate || today)) / 86400000);
+        if (daysSince >= threshold) {
+          updated.urgency = Math.min(5, t.urgency + 1);
+          updated.urgencyUpdatedDate = today;
+        }
+      }
+      return updated;
+    });
+    persistTasks(rolled);
+    if (user) rolled.forEach((t) => upsertTask(user.id, t));
+    persistSkipped([]);
+    timer.stopTimer();
+    setLastResetDate(today);
+    writeStorage(SK_LAST_RESET, today);
+  }
+
+  useEffect(() => {
+    const today = todayStr();
+    if (!lastResetDate) {
+      setLastResetDate(today);
+      writeStorage(SK_LAST_RESET, today);
+      return;
+    }
+    if (lastResetDate !== today) performDayRollover(today);
+  }, [currentHour]); // eslint-disable-line
+
   function resetDay() {
     const reset = tasks.map((t) => ({ ...t, done: false }));
-    // upsert all tasks as not-done
     setTasks(reset); writeStorage(SK_TASKS, reset);
     if (user) reset.forEach((t) => upsertTask(user.id, t));
     persistSkipped([]); timer.stopTimer();
@@ -988,12 +1023,15 @@ export default function DayPlannerDecidesForYou() {
 
   function saveTask() {
     if (!taskForm.title.trim()) return;
+    const today = todayStr();
     if (editingTaskId) {
-      const updated = tasks.map((t) => t.id === editingTaskId ? { ...t, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration) } : t);
+      const old = tasks.find((t) => t.id === editingTaskId);
+      const urgencyUpdatedDate = old && old.urgency !== taskForm.urgency ? today : (old?.urgencyUpdatedDate ?? today);
+      const updated = tasks.map((t) => t.id === editingTaskId ? { ...t, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration), urgencyUpdatedDate } : t);
       const changed = updated.find((t) => t.id === editingTaskId);
       persistTasks(updated, changed);
     } else {
-      const newTask: Task = { id: crypto.randomUUID(), done: false, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration) };
+      const newTask: Task = { id: crypto.randomUUID(), done: false, ...taskForm, title: taskForm.title.trim(), duration: Number(taskForm.duration), urgencyUpdatedDate: today };
       persistTasks([...tasks, newTask], newTask);
     }
     closeTaskModal();
@@ -1148,7 +1186,39 @@ export default function DayPlannerDecidesForYou() {
     { key: "now",      label: "Now",      icon: <Brain className="h-5 w-5" />        },
     { key: "tasks",    label: "My day",   icon: <CheckCircle2 className="h-5 w-5" /> },
     { key: "timeline", label: "Timeline", icon: <CalendarDays className="h-5 w-5" /> },
+    { key: "history",  label: "History",  icon: <History className="h-5 w-5" />      },
   ];
+
+  const historyByDate = useMemo(() => {
+    const groups: Record<string, TaskLogEntry[]> = {};
+    for (const e of taskLog) {
+      if (!groups[e.date]) groups[e.date] = [];
+      groups[e.date].push(e);
+    }
+    return Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, 60);
+  }, [taskLog]);
+
+  function weekLabel(dateStr: string): string {
+    const d = new Date(dateStr + "T12:00:00");
+    const today = new Date(todayStr() + "T12:00:00");
+    const diffDays = Math.round((today.getTime() - d.getTime()) / 86400000);
+    if (diffDays <= 6)  return "This week";
+    if (diffDays <= 13) return "Last week";
+    const y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+    const mon = new Date(y, m, day - d.getDay() + 1);
+    return `Week of ${mon.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+  }
+
+  function dayLabel(dateStr: string): string {
+    const d = new Date(dateStr + "T12:00:00");
+    const today = new Date(todayStr() + "T12:00:00");
+    const diffDays = Math.round((today.getTime() - d.getTime()) / 86400000);
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-[#FDF6EE]">
@@ -1376,6 +1446,50 @@ export default function DayPlannerDecidesForYou() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* ── History tab ── */}
+          {activeTab === "history" && (
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold text-[#3D1A08] px-1">Activity log</h2>
+              {historyByDate.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-[#E8D0B8] p-8 text-center text-sm text-[#C8A87C]">
+                  No history yet — complete tasks to see them here.
+                </div>
+              )}
+              {(() => {
+                let lastWeek = "";
+                return historyByDate.map(([date, entries]) => {
+                  const week = weekLabel(date);
+                  const weekHeader = week !== lastWeek ? (lastWeek = week, (
+                    <div key={`w-${date}`} className="pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-[#C8A87C] px-1">{week}</div>
+                  )) : null;
+                  const done    = entries.filter((e) => e.outcome === "done");
+                  const skipped = entries.filter((e) => e.outcome === "skipped");
+                  const totalMin = done.reduce((s, e) => s + e.taskDuration, 0);
+                  return (
+                    <div key={date}>
+                      {weekHeader}
+                      <div className={cardCls}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-[#3D1A08]">{dayLabel(date)}</span>
+                          <div className="flex items-center gap-2 text-xs text-[#C8A87C]">
+                            {done.length > 0 && <span className="text-[#3D1A08]">{done.length} ✓</span>}
+                            {skipped.length > 0 && <span>{skipped.length} —</span>}
+                            {totalMin > 0 && <span>{totalMin} min</span>}
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          {[...done, ...skipped].sort((a, b) => a.timestamp - b.timestamp).map((e) => (
+                            <LogRow key={e.id} entry={e} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
 
