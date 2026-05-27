@@ -930,46 +930,42 @@ export default function DayPlannerDecidesForYou() {
   function TaskRow({ task, index }: { task: RankedTask; index: number }) {
     const isDone    = task.done;
     const isSkipped = skippedTaskIds.includes(task.id);
-    const isActive  = timer.activeTaskId === task.id;
     const colors    = taskTypeColor(task.type);
 
     return (
-      <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 transition ${
+      <div className={`rounded-2xl border px-3 py-2 transition ${
         isDone ? "opacity-50 border-[#EDD8C0]" : isSkipped ? "opacity-50 border-dashed border-[#E8D0B8]" : "border-[#E8D0B8]"}`}>
-        <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium ${isDone ? "bg-[#F5E6D3] text-[#3D1A08]" : "bg-[#E8D0B8] text-[#3D1A08]"}`}>
-          {isDone ? "✓" : index + 1}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium truncate ${isDone ? "line-through text-[#C8A87C]" : "text-[#3D1A08]"}`}>{task.title}</div>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <span className={`text-[10px] rounded-full px-1.5 py-0.5 border ${colors.bg} ${colors.border} ${colors.text}`}>{task.type}</span>
-            <span className="text-[10px] text-[#C8A87C]">{task.duration} min</span>
-            {isActive && <span className="text-[10px] text-[#3D1A08] font-medium">{timer.formatElapsed()}</span>}
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium ${isDone ? "bg-[#F5E6D3] text-[#3D1A08]" : "bg-[#E8D0B8] text-[#3D1A08]"}`}>
+            {isDone ? "✓" : index + 1}
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className={`text-sm font-medium truncate ${isDone ? "line-through text-[#C8A87C]" : "text-[#3D1A08]"}`}>{task.title}</div>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className={`text-[10px] rounded-full px-1.5 py-0.5 border ${colors.bg} ${colors.border} ${colors.text}`}>{task.type}</span>
+              <span className="text-[10px] text-[#C8A87C]">{task.duration} min</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {!isDone && (
+              <button onClick={() => markDone(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#C8DEC8] border border-[#B8D4BA] text-[#1A3D1E] hover:opacity-80" style={{boxShadow: '0 3px 0 #8FAF90'}}>
+                <CheckCircle2 className="h-5 w-5" />
+              </button>
+            )}
+            {!isDone && isSkipped && (
+              <button onClick={() => unskipTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#3D1A08] text-base hover:bg-[#EDD8C0]" style={{boxShadow: '0 3px 0 #C8B098'}}>↩</button>
+            )}
+            {!isDone && !isSkipped && (
+              <button onClick={() => skipTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#7A4A2A] hover:bg-[#EDD8C0] text-base font-medium" style={{boxShadow: '0 3px 0 #C8B098'}}>—</button>
+            )}
+            <button onClick={() => openEditTaskModal(task)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#7A4A2A] hover:bg-[#EDD8C0]" style={{boxShadow: '0 3px 0 #C8B098'}}>
+              <Sparkles className="h-5 w-5" />
+            </button>
           </div>
         </div>
-        {/* FIX: all buttons 44×44px */}
-        <div className="flex items-center gap-1 shrink-0">
-          {!isDone && (
-            <button onClick={() => markDone(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#C8DEC8] border border-[#B8D4BA] text-[#1A3D1E] hover:opacity-80" style={{boxShadow: '0 3px 0 #8FAF90'}}>
-              <CheckCircle2 className="h-5 w-5" />
-            </button>
-          )}
-          {!isDone && !isSkipped && (
-            <button onClick={() => handleStartTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#7A4A2A] hover:bg-[#EDD8C0]" style={{boxShadow: '0 3px 0 #C8B098'}}>
-              {isActive ? <Timer className="h-5 w-5" /> : <PlayCircle className="h-5 w-5" />}
-            </button>
-          )}
-          {!isDone && isSkipped && (
-            <button onClick={() => unskipTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#3D1A08] text-base hover:bg-[#EDD8C0]" style={{boxShadow: '0 3px 0 #C8B098'}}>↩</button>
-          )}
-          {!isDone && !isSkipped && (
-            <button onClick={() => skipTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#7A4A2A] hover:bg-[#EDD8C0] text-base font-medium" style={{boxShadow: '0 3px 0 #C8B098'}}>—</button>
-          )}
-          <button onClick={() => openEditTaskModal(task)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5E6D3] border border-[#E8D0B8] text-[#7A4A2A] hover:bg-[#EDD8C0]" style={{boxShadow: '0 3px 0 #C8B098'}}>
-            <Sparkles className="h-5 w-5" />
-          </button>
-          <button onClick={() => deleteTask(task.id)} className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5C4B0] border border-[#E8A888] text-[#3D1A08] hover:opacity-80" style={{boxShadow: '0 3px 0 #C87858'}}>
-            <Trash2 className="h-5 w-5" />
+        <div className="flex justify-center mt-2">
+          <button onClick={() => deleteTask(task.id)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F5C4B0] border border-[#E8A888] text-[#3D1A08] hover:opacity-80" style={{boxShadow: '0 3px 0 #C87858'}}>
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>
