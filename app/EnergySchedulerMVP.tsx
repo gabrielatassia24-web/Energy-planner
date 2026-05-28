@@ -995,15 +995,16 @@ export default function DayPlannerDecidesForYou() {
     writeStorage(SK_LAST_RESET, today);
   }
 
-  useEffect(() => {
-    const today = todayStr();
-    if (!lastResetDate) {
-      setLastResetDate(today);
-      writeStorage(SK_LAST_RESET, today);
-      return;
-    }
-    if (lastResetDate !== today) performDayRollover(today);
-  }, [currentHour]); // eslint-disable-line
+  // Auto-rollover disabled for diagnosis
+  // useEffect(() => {
+  //   const today = todayStr();
+  //   if (!lastResetDate) {
+  //     setLastResetDate(today);
+  //     writeStorage(SK_LAST_RESET, today);
+  //     return;
+  //   }
+  //   if (lastResetDate !== today) performDayRollover(today);
+  // }, [currentHour]);
 
   function resetDay() {
     const reset = tasks.map((t) => ({ ...t, done: false }));
