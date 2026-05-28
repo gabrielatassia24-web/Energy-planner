@@ -13,18 +13,25 @@ function LoginForm() {
   const [error,   setError]   = useState<string | null>(null);
 
   useEffect(() => {
-  const code = searchParams.get("code");
-  const type = searchParams.get("type");
-  if (code && type === "magiclink") {
-    supabase.auth.verifyOtp({ 
-      token_hash: code, 
-      type: "magiclink" 
-    }).then(({ error }) => {
-      if (!error) router.push("/");
-      else setError("Link expired. Request a new one.");
-    });
-  }
-}, [searchParams, router]);
+    const token_hash = searchParams.get("token_hash");
+    const type       = searchParams.get("type");
+    const code       = searchParams.get("code");
+
+    if (token_hash && type) {
+      supabase.auth.verifyOtp({
+        token_hash,
+        type: type as "magiclink" | "email",
+      }).then(({ error }) => {
+        if (!error) router.push("/");
+        else setError("Link expired. Request a new one.");
+      });
+    } else if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) router.push("/");
+        else setError("Link expired. Request a new one.");
+      });
+    }
+  }, [searchParams, router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -35,7 +42,7 @@ function LoginForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/login`,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
