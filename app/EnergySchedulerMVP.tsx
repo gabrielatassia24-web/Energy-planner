@@ -782,33 +782,8 @@ export default function DayPlannerDecidesForYou() {
   const [taskLog,        setTaskLog]        = useState<TaskLogEntry[]>(() => readStorage<TaskLogEntry[]>(SK_LOG, []));
   const [dbLoading,      setDbLoading]      = useState(false);
 
-  // ── Hydrate from Supabase when user logs in ──────────────────────────────────
-  useEffect(() => {
-    if (!user) return;
-    setDbLoading(true);
-
-    const yesterday = yesterdayStr();
-
-    Promise.all([
-      fetchTasks(user.id),
-      fetchFixedEvents(user.id),
-      fetchTaskLog(user.id, yesterday),
-      fetchLearningMap(user.id),
-      fetchPreferences(user.id),
-    ]).then(([dbTasks, dbEvents, dbLog, dbLearning, dbPrefs]) => {
-      if (dbTasks.length   > 0) { setTasks(dbTasks);       writeStorage(SK_TASKS,    dbTasks); }
-      if (dbEvents.length  > 0) { setFixedEvents(dbEvents); writeStorage(SK_EVENTS,   dbEvents); }
-      if (dbLog.length     > 0) { setTaskLog(dbLog);        writeStorage(SK_LOG,      dbLog); }
-      if (Object.keys(dbLearning).length > 0) { setLearningMap(dbLearning); writeStorage(SK_LEARNING, dbLearning); }
-      if (dbPrefs) {
-        setEnergyStateValue(dbPrefs.energyState);
-        setSkippedTaskIds(dbPrefs.skippedTaskIds);
-        writeStorage(SK_ENERGY,  dbPrefs.energyState);
-        writeStorage(SK_SKIPPED, dbPrefs.skippedTaskIds);
-      }
-      setDbLoading(false);
-    });
-  }, [user]);
+  // Hydrate from Supabase — DISABLED FOR DIAGNOSIS
+  // useEffect(() => { ... }, [user]);
 
   // Auto-sync clock
   useEffect(() => {
