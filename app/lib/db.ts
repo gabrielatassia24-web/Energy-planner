@@ -167,6 +167,11 @@ export async function deleteFixedEvent(eventId: string): Promise<void> {
   if (error) console.error("deleteFixedEvent", error);
 }
 
+export async function deleteAllFixedEvents(userId: string): Promise<void> {
+  const { error } = await supabase.from("fixed_events").delete().eq("user_id", userId);
+  if (error) console.error("deleteAllFixedEvents", error);
+}
+
 // ─── Task Log ─────────────────────────────────────────────────────────────────
 
 export async function fetchTaskLog(userId: string, sinceDate: string): Promise<TaskLogEntry[]> {

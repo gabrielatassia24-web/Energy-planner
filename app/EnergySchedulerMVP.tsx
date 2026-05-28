@@ -29,6 +29,7 @@ import {
   fetchFixedEvents,
   insertFixedEvent,
   deleteFixedEvent as dbDeleteFixedEvent,
+  deleteAllFixedEvents as dbDeleteAllFixedEvents,
   fetchTaskLog,
   insertLogEntry,
   fetchLearningMap,
@@ -781,10 +782,11 @@ export default function DayPlannerDecidesForYou() {
   const [learningMap,    setLearningMap]    = useState<LearningMap>(() => readStorage<LearningMap>(SK_LEARNING, {}));
   const [taskLog,        setTaskLog]        = useState<TaskLogEntry[]>(() => readStorage<TaskLogEntry[]>(SK_LOG, []));
   const [dbLoading,      setDbLoading]      = useState(false);
+  const [hydrationComplete, setHydrationComplete] = useState(false);
 
   // ── Hydrate from Supabase when user logs in ──────────────────────────────────
   useEffect(() => {
-    if (!user) return;
+    if (!user) { setHydrationComplete(true); return; }
     setDbLoading(true);
 
     const yesterday = yesterdayStr();
@@ -807,6 +809,7 @@ export default function DayPlannerDecidesForYou() {
         writeStorage(SK_SKIPPED, dbPrefs.skippedTaskIds);
       }
       setDbLoading(false);
+      setHydrationComplete(true);
     });
   }, [user]);
 
@@ -991,11 +994,18 @@ export default function DayPlannerDecidesForYou() {
     if (user) rolled.forEach((t) => upsertTask(user.id, t));
     persistSkipped([]);
     timer.stopTimer();
+
+    // Clear fixed events — they don't carry over to the next day
+    setFixedEvents([]);
+    writeStorage(SK_EVENTS, []);
+    if (user) dbDeleteAllFixedEvents(user.id);
+
     setLastResetDate(today);
     writeStorage(SK_LAST_RESET, today);
   }
 
   useEffect(() => {
+    if (!hydrationComplete) return;
     const today = todayStr();
     if (!lastResetDate) {
       setLastResetDate(today);
@@ -1003,7 +1013,7 @@ export default function DayPlannerDecidesForYou() {
       return;
     }
     if (lastResetDate !== today) performDayRollover(today);
-  }, [currentHour]); // eslint-disable-line
+  }, [currentHour, hydrationComplete]); // eslint-disable-line
 
   function resetDay() {
     const reset = tasks.map((t) => ({ ...t, done: false }));
