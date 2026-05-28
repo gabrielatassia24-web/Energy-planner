@@ -4,10 +4,12 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
-  const code       = searchParams.get("code");
-  const token_hash = searchParams.get("token_hash");
-  const type       = searchParams.get("type");
+  const token_hash = request.nextUrl.searchParams.get("token_hash");
+  const type       = request.nextUrl.searchParams.get("type");
+  const code       = request.nextUrl.searchParams.get("code");
+
+  const home  = new URL("/",      request.url);
+  const login = new URL("/login", request.url);
 
   try {
     const cookieStore = await cookies();
@@ -28,16 +30,16 @@ export async function GET(request: NextRequest) {
 
     if (token_hash && type) {
       const { error } = await supabase.auth.verifyOtp({ token_hash, type: type as "magiclink" | "email" });
-      if (!error) return NextResponse.redirect(`${origin}/`);
+      if (!error) return NextResponse.redirect(home);
     }
 
     if (code) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (!error) return NextResponse.redirect(`${origin}/`);
+      if (!error) return NextResponse.redirect(home);
     }
-  } catch {
-    // fall through to redirect on any unexpected error
+  } catch (err) {
+    console.error("auth/callback error:", err);
   }
 
-  return NextResponse.redirect(`${origin}/login`);
+  return NextResponse.redirect(login);
 }
