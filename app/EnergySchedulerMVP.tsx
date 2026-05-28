@@ -782,8 +782,33 @@ export default function DayPlannerDecidesForYou() {
   const [taskLog,        setTaskLog]        = useState<TaskLogEntry[]>(() => readStorage<TaskLogEntry[]>(SK_LOG, []));
   const [dbLoading,      setDbLoading]      = useState(false);
 
-  // Hydrate from Supabase — DISABLED FOR DIAGNOSIS
-  // useEffect(() => { ... }, [user]);
+  // ── Hydrate from Supabase when user logs in ──────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    setDbLoading(true);
+
+    const yesterday = yesterdayStr();
+
+    Promise.all([
+      fetchTasks(user.id),
+      fetchFixedEvents(user.id),
+      fetchTaskLog(user.id, yesterday),
+      fetchLearningMap(user.id),
+      fetchPreferences(user.id),
+    ]).then(([dbTasks, dbEvents, dbLog, dbLearning, dbPrefs]) => {
+      if (dbTasks.length   > 0) { setTasks(dbTasks);       writeStorage(SK_TASKS,    dbTasks); }
+      if (dbEvents.length  > 0) { setFixedEvents(dbEvents); writeStorage(SK_EVENTS,   dbEvents); }
+      if (dbLog.length     > 0) { setTaskLog(dbLog);        writeStorage(SK_LOG,      dbLog); }
+      if (Object.keys(dbLearning).length > 0) { setLearningMap(dbLearning); writeStorage(SK_LEARNING, dbLearning); }
+      if (dbPrefs) {
+        setEnergyStateValue(dbPrefs.energyState);
+        setSkippedTaskIds(dbPrefs.skippedTaskIds);
+        writeStorage(SK_ENERGY,  dbPrefs.energyState);
+        writeStorage(SK_SKIPPED, dbPrefs.skippedTaskIds);
+      }
+      setDbLoading(false);
+    });
+  }, [user]);
 
   // Auto-sync clock
   useEffect(() => {
@@ -970,16 +995,15 @@ export default function DayPlannerDecidesForYou() {
     writeStorage(SK_LAST_RESET, today);
   }
 
-  // Auto-rollover disabled for diagnosis
-  // useEffect(() => {
-  //   const today = todayStr();
-  //   if (!lastResetDate) {
-  //     setLastResetDate(today);
-  //     writeStorage(SK_LAST_RESET, today);
-  //     return;
-  //   }
-  //   if (lastResetDate !== today) performDayRollover(today);
-  // }, [currentHour]);
+  useEffect(() => {
+    const today = todayStr();
+    if (!lastResetDate) {
+      setLastResetDate(today);
+      writeStorage(SK_LAST_RESET, today);
+      return;
+    }
+    if (lastResetDate !== today) performDayRollover(today);
+  }, [currentHour]); // eslint-disable-line
 
   function resetDay() {
     const reset = tasks.map((t) => ({ ...t, done: false }));
@@ -1141,6 +1165,27 @@ export default function DayPlannerDecidesForYou() {
     </div>
   );
 
+  const historyRows = useMemo(() => {
+    const groups: Record<string, TaskLogEntry[]> = {};
+    for (const e of taskLog) {
+      if (!groups[e.date]) groups[e.date] = [];
+      groups[e.date].push(e);
+    }
+    const sorted = Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, 60);
+    let lastWeek = "";
+    return sorted.map(([date, entries]) => {
+      const week = weekLabel(date);
+      const showWeekHeader = week !== lastWeek;
+      if (showWeekHeader) lastWeek = week;
+      const done    = entries.filter((e) => e.outcome === "done");
+      const skipped = entries.filter((e) => e.outcome === "skipped");
+      const totalMin = done.reduce((s, e) => s + e.taskDuration, 0);
+      return { date, entries, week, showWeekHeader, done, skipped, totalMin };
+    });
+  }, [taskLog]); // eslint-disable-line
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   // Show spinner while checking auth
@@ -1164,27 +1209,6 @@ export default function DayPlannerDecidesForYou() {
     { key: "timeline", label: "Timeline", icon: <CalendarDays className="h-5 w-5" /> },
     { key: "history",  label: "History",  icon: <History className="h-5 w-5" />      },
   ];
-
-  const historyRows = useMemo(() => {
-    const groups: Record<string, TaskLogEntry[]> = {};
-    for (const e of taskLog) {
-      if (!groups[e.date]) groups[e.date] = [];
-      groups[e.date].push(e);
-    }
-    const sorted = Object.entries(groups)
-      .sort(([a], [b]) => b.localeCompare(a))
-      .slice(0, 60);
-    let lastWeek = "";
-    return sorted.map(([date, entries]) => {
-      const week = weekLabel(date);
-      const showWeekHeader = week !== lastWeek;
-      if (showWeekHeader) lastWeek = week;
-      const done    = entries.filter((e) => e.outcome === "done");
-      const skipped = entries.filter((e) => e.outcome === "skipped");
-      const totalMin = done.reduce((s, e) => s + e.taskDuration, 0);
-      return { date, entries, week, showWeekHeader, done, skipped, totalMin };
-    });
-  }, [taskLog]); // eslint-disable-line
 
   function weekLabel(dateStr: string): string {
     const d = new Date(dateStr + "T12:00:00");
